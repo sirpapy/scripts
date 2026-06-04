@@ -1,0 +1,67 @@
+{% extends "portal/base.html" %}
+
+{% block title %}Cloud Toolbox — Portail d'outils d'infrastructure{% endblock %}
+
+{% block content %}
+  <div class="animate-in duration-500">
+    <div class="hero fade-in-up">
+      <span class="eyebrow">
+        <span class="vi" data-icon="Sparkles" data-icon-size="13"></span>
+        Infrastructure Cloud
+      </span>
+      <h1>Boîte à Outils Cloud</h1>
+      <p>
+        Une suite d'outils performants et élégants pour piloter votre infrastructure :
+        inspectez, nettoyez et orchestrez vos ressources cloud depuis un portail unifié.
+      </p>
+    </div>
+
+    <div class="tool-groups">
+      {% for group in tool_groups %}
+        <section
+          class="tool-section fade-in-up"
+          id="{{ group.id }}"
+          style="animation-delay: {{ forloop.counter }}00ms"
+        >
+          <div class="tool-section-head">
+            <div>
+              <h2>{{ group.title }}</h2>
+              <p>{{ group.description }}</p>
+            </div>
+            <span class="tool-count">{{ group.tools|length }}</span>
+          </div>
+
+          {% if group.tools %}
+            <div class="tiles">
+              {% for tool in group.tools %}
+                <a
+                  class="tile"
+                  href="{% url tool.route_name %}"
+                >
+                  <div class="tile-icon">
+                    <span class="vi" data-icon="{{ tool.icon_name }}" data-icon-size="24"></span>
+                  </div>
+
+                  <div>
+                    <div class="tile-cat">{{ tool.category }}</div>
+                    <h3>{{ tool.title }}</h3>
+                    <p>{{ tool.description }}</p>
+                  </div>
+
+                  <span class="tile-arrow">
+                    Ouvrir l'outil
+                    <span class="vi" data-icon="ArrowRight" data-icon-size="15"></span>
+                  </span>
+                </a>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="empty-section">
+              Aucun outil disponible pour le moment.
+            </div>
+          {% endif %}
+        </section>
+      {% endfor %}
+    </div>
+  </div>
+{% endblock %}

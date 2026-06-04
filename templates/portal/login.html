@@ -1,0 +1,52 @@
+{% extends "portal/base.html" %}
+{% load ui %}
+
+{% block title %}Connexion - Cloud Toolbox{% endblock %}
+
+{% block content %}
+  <div class="auth-wrap">
+    <form class="card card-pad auth-card" method="post" action="{% url 'login' %}">
+      {% csrf_token %}
+
+      <div class="auth-head">
+        <span class="logo">
+          <span class="vi" data-icon="Cloud" data-icon-size="18"></span>
+        </span>
+        <div>
+          <h2>Connexion</h2>
+          <p>Utilisez votre compte interne.</p>
+        </div>
+      </div>
+
+      {% if form.errors %}
+        <div class="alert alert-amber">
+          <span class="alert-icon">
+            <span class="vi" data-icon="AlertTriangle" data-icon-size="18"></span>
+          </span>
+          <div class="alert-body">
+            Identifiant ou mot de passe invalide.
+          </div>
+        </div>
+      {% endif %}
+
+      <div class="field">
+        <label for="{{ form.username.id_for_label }}">Identifiant</label>
+        {{ form.username }}
+      </div>
+
+      <div class="field">
+        <label for="{{ form.password.id_for_label }}">Mot de passe</label>
+        {{ form.password }}
+      </div>
+
+      <input type="hidden" name="next" value="{{ next }}">
+
+      <div class="auth-actions">
+        <button class="btn btn-indigo auth-submit" type="submit">
+          <span class="vi" data-icon="LogIn" data-icon-size="16"></span>
+          <span>Se connecter</span>
+        </button>
+      </div>
+    </form>
+  </div>
+{% endblock %}

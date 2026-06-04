@@ -1,0 +1,109 @@
+{% load static %}
+{% load ui %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Cloud Toolbox{% endblock %}</title>
+
+  <link rel="stylesheet" href="{% static 'cloud_toolbox/css/tokens.css' %}?v=5">
+  <link rel="stylesheet" href="{% static 'cloud_toolbox/css/base.css' %}?v=5">
+  <link rel="stylesheet" href="{% static 'cloud_toolbox/css/components.css' %}?v=5">
+  <link rel="stylesheet" href="{% static 'cloud_toolbox/css/pages.css' %}?v=5">
+</head>
+<body>
+  <div id="app">
+    <nav class="navbar">
+      <div class="navbar-inner">
+        <a class="brand" href="{% url 'index' %}">
+          <span class="logo">
+            <span class="vi" data-icon="Cloud" data-icon-size="18"></span>
+          </span>
+          Cloud Toolbox
+        </a>
+
+        <div class="nav-links">
+          {% if request.user.is_authenticated %}
+            <a class="nav-link {% active_nav 'index' %}" href="{% url 'index' %}">
+              <span class="vi" data-icon="Home" data-icon-size="16"></span>
+              Accueil
+            </a>
+            <a class="nav-link" href="{% url 'index' %}#block-storage-tools">
+              <span class="vi" data-icon="HardDrive" data-icon-size="16"></span>
+              Block Storage
+            </a>
+            <a class="nav-link" href="{% url 'index' %}#object-storage-tools">
+              <span class="vi" data-icon="Server" data-icon-size="16"></span>
+              Object Storage
+            </a>
+            <a class="nav-link" href="{% url 'index' %}#common-tools">
+              <span class="vi" data-icon="Search" data-icon-size="16"></span>
+              Common
+            </a>
+            <form class="logout-form" method="post" action="{% url 'logout' %}">
+              {% csrf_token %}
+              <button class="nav-link logout-button" type="submit">
+                <span class="vi" data-icon="LogOut" data-icon-size="16"></span>
+                {{ request.user.username }}
+              </button>
+            </form>
+          {% endif %}
+        </div>
+      </div>
+    </nav>
+
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+      © 2026 Cloud Toolbox — Portail d'outils d'infrastructure. Tous droits réservés.
+    </footer>
+  </div>
+
+  <div class="toast-wrap" id="toasts">
+    {% for message in messages %}
+      <div class="toast ok">
+        <span class="t-icon">
+          <span class="vi" data-icon="CheckCircle" data-icon-size="16"></span>
+        </span>
+        {{ message }}
+      </div>
+    {% endfor %}
+  </div>
+
+  <div
+    class="modal-backdrop"
+    data-account-modal
+    hidden
+  >
+    <section
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="account-modal-title"
+    >
+      <div class="modal-head">
+        <div>
+          <div class="modal-kicker">Account API</div>
+          <h3 id="account-modal-title">Account details</h3>
+        </div>
+        <button
+          class="icon-btn"
+          type="button"
+          data-modal-close
+          aria-label="Fermer"
+        >
+          <span class="vi" data-icon="X" data-icon-size="16"></span>
+        </button>
+      </div>
+
+      <div class="modal-body" data-account-modal-body></div>
+    </section>
+  </div>
+
+  <script src="{% static 'cloud_toolbox/js/icons.js' %}"></script>
+  <script src="{% static 'cloud_toolbox/js/app.js' %}"></script>
+</body>
+</html>

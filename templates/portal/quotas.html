@@ -1,0 +1,211 @@
+{% extends "portal/base.html" %}
+
+{% block title %}Gestionnaire de Quotas — Cloud Toolbox{% endblock %}
+
+{% block content %}
+  <div class="animate-in duration-500">
+    <div class="crumb fade-in-down">
+      <a href="{% url 'index' %}">Accueil</a>
+      <span style="opacity:.6">/</span>
+      <span>Gestionnaire de Quotas</span>
+    </div>
+
+    <div class="page-head fade-in-up">
+      <h2>
+        <span class="vi" data-icon="Server" data-icon-size="26"></span>
+        Gestionnaire de Quotas
+      </h2>
+      <p>Récupérez le quota Cinder d'un projet, puis décidez si une augmentation doit être appliquée.</p>
+    </div>
+
+    <form
+      class="card card-pad fade-in-up"
+      method="get"
+      action="{% url 'quotas' %}"
+      style="animation-delay:.05s; margin-bottom:24px;"
+    >
+      <div class="form-grid quota-lookup-grid">
+        <div class="field">
+          <label>OpenStack</label>
+          <div class="segmented-control" role="radiogroup" aria-label="OpenStack">
+            {% for openstack_version_option in openstack_versions %}
+              <label class="segment">
+                <input
+                  class="segment-input"
+                  type="radio"
+                  name="openstack_version"
+                  value="{{ openstack_version_option }}"
+                  {% if openstack_version_option == form.openstack_version %}checked{% endif %}
+                >
+                <span>{{ openstack_version_option }}</span>
+              </label>
+            {% endfor %}
+          </div>
+          <div class="hint">Plateforme ciblée.</div>
+        </div>
+
+        <div class="field">
+          <label for="project_id">Project ID</label>
+          <input
+            id="project_id"
+            name="project_id"
+            value="{{ form.project_id }}"
+            placeholder="7a2f1c7e-9f31-4c4e-bb6d-1fd16d2c1a40"
+          >
+          <div class="hint">UUID du projet OpenStack.</div>
+        </div>
+
+        <div class="field">
+          <label for="region">Région</label>
+          <select id="region" name="region">
+            {% for region_option in regions %}
+              <option value="{{ region_option }}" {% if region_option == form.region %}selected{% endif %}>
+                {{ region_option }}
+              </option>
+            {% endfor %}
+          </select>
+          <div class="hint">Région où appliquer le quota.</div>
+        </div>
+      </div>
+
+      <div class="toolbar-row">
+        <button class="btn btn-indigo" type="submit">
+          <span class="vi" data-icon="Search" data-icon-size="16"></span>
+          <span>Récupérer le quota</span>
+        </button>
+
+        <button
+          class="btn btn-ghost btn-sm"
+          type="button"
+          data-quota-example
+          data-project-id="7a2f1c7e-9f31-4c4e-bb6d-1fd16d2c1a40"
+        >
+          Exemple
+        </button>
+      </div>
+    </form>
+
+    {% if not searched %}
+      <div class="empty scale-in">
+        <div class="ghost-icon">
+          <span class="vi" data-icon="Server" data-icon-size="52" data-icon-stroke="1.5"></span>
+        </div>
+        <h4>Aucun quota récupéré</h4>
+        <p>Saisissez un project ID et une région pour récupérer le quota courant côté backend.</p>
+      </div>
+    {% elif current_quota %}
+      <div class="summary-line">
+        <div class="count">
+          Projet <strong class="mono">{{ current_quota.project_id }}</strong>
+          sur <strong>{{ current_quota.openstack_version }}</strong>
+          dans <strong>{{ current_quota.region }}</strong>
+        </div>
+      </div>
+
+      <div class="table-wrap scale-in" style="margin-bottom:18px;">
+        <table>
+          <thead>
+            <tr>
+              <th>Quota</th>
+              <th>Limite courante</th>
+              <th>Commande</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in quota_rows %}
+              <tr class="main-row">
+                <td>
+                  <strong>{{ row.label }}</strong>
+                  <div class="hint mono">--{{ row.openstack_name }}</div>
+                </td>
+                <td>
+                  {{ row.current_limit }}
+                  <span style="color:var(--text-soft);font-size:12px;">{{ row.unit }}</span>
+                </td>
+                <td><span class="mono">--{{ row.openstack_name }}</span></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="detail-panel quota-command-panel">
+        <div class="vs-head">
+          <span class="vs-prompt">$</span>
+          <span class="mono">openstack quota show {{ current_quota.project_id }}</span>
+        </div>
+
+        <div class="alert alert-green">
+          <span class="alert-icon">
+            <span class="vi" data-icon="CheckCircle" data-icon-size="18"></span>
+          </span>
+          <div class="alert-body">
+            <strong>Quota récupéré.</strong>
+            Vous pouvez maintenant décider si le projet doit recevoir une augmentation.
+          </div>
+        </div>
+      </div>
+
+      <form
+        class="card card-pad fade-in-up"
+        method="post"
+        action="{% url 'quotas' %}"
+        style="animation-delay:.05s; margin-top:24px;"
+      >
+        {% csrf_token %}
+        <input type="hidden" name="project_id" value="{{ current_quota.project_id }}">
+        <input
+          type="hidden"
+          name="openstack_version"
+          value="{{ current_quota.openstack_version }}"
+        >
+        <input type="hidden" name="region" value="{{ current_quota.region }}">
+
+        <div class="form-grid quota-decision-grid">
+          <div class="field">
+            <label for="volumes">Nouveau number of volumes</label>
+            <input
+              id="volumes"
+              name="volumes"
+              type="number"
+              min="{{ current_quota.volumes_limit }}"
+              step="1"
+              value="{{ current_quota.volumes_limit }}"
+            >
+            <div class="hint">Actuel : {{ current_quota.volumes_limit }} volumes.</div>
+          </div>
+
+          <div class="field">
+            <label for="gigabytes">Nouveau size total</label>
+            <input
+              id="gigabytes"
+              name="gigabytes"
+              type="number"
+              min="{{ current_quota.gigabytes_limit }}"
+              step="1"
+              value="{{ current_quota.gigabytes_limit }}"
+            >
+            <div class="hint">Actuel : {{ current_quota.gigabytes_limit }} GiB.</div>
+          </div>
+        </div>
+
+        <div class="toolbar-row">
+          <button
+            class="btn btn-indigo"
+            type="submit"
+            name="action"
+            value="apply"
+            data-confirm="Appliquer cette modification de quota ?"
+          >
+            <span class="vi" data-icon="CheckCircle" data-icon-size="16"></span>
+            Appliquer la décision
+          </button>
+
+          <a class="btn btn-ghost" href="{% url 'quotas' %}">
+            Nouvelle recherche
+          </a>
+        </div>
+      </form>
+    {% endif %}
+  </div>
+{% endblock %}

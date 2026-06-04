@@ -1,0 +1,370 @@
+{% extends "portal/base.html" %}
+{% load ui %}
+
+{% block title %}Gestionnaire de Volumes — Cloud Toolbox{% endblock %}
+
+{% block content %}
+  <div class="animate-in duration-500">
+    <div class="crumb fade-in-down">
+      <a href="{% url 'index' %}">Accueil</a>
+      <span style="opacity:.6">/</span>
+      <span>Gestionnaire de Volumes</span>
+    </div>
+
+    <div class="page-head fade-in-up">
+      <h2>
+        <span class="vi" data-icon="HardDrive" data-icon-size="26"></span>
+        Gestionnaire de Volumes
+      </h2>
+      <p>Recherchez, analysez et gérez vos volumes de stockage — à l'unité ou par lots.</p>
+    </div>
+
+    <form
+      class="card card-pad fade-in-up"
+      method="get"
+      action="{% url 'volumes' %}"
+      style="animation-delay:.05s; margin-bottom:24px;"
+    >
+      <div class="form-grid volumes-search-grid">
+        <div class="field">
+          <label>OpenStack</label>
+          <div class="segmented-control" role="radiogroup" aria-label="OpenStack">
+            {% for openstack_version_option in openstack_versions %}
+              <label class="segment">
+                <input
+                  class="segment-input"
+                  type="radio"
+                  name="openstack_version"
+                  value="{{ openstack_version_option }}"
+                  {% if openstack_version_option == openstack_version %}checked{% endif %}
+                >
+                <span>{{ openstack_version_option }}</span>
+              </label>
+            {% endfor %}
+          </div>
+          <div class="hint">Plateforme ciblée.</div>
+        </div>
+
+        <div class="field">
+          <label for="region">Région</label>
+          <select id="region" name="region">
+            {% for region_option in regions %}
+              <option value="{{ region_option }}" {% if region_option == region %}selected{% endif %}>
+                {{ region_option }}
+              </option>
+            {% endfor %}
+          </select>
+          <div class="hint">Zone de disponibilité ciblée.</div>
+        </div>
+
+        <div class="field">
+          <label for="ids">IDs de volume</label>
+          <textarea
+            id="ids"
+            name="ids"
+            rows="1"
+            data-autoresize
+            placeholder="vol-0a1b2c3d, vol-4e5f6g7h  vol-89ab&#10;(séparez par virgules, espaces ou retours à la ligne)"
+          >{{ raw_ids }}</textarea>
+          <div class="hint">{{ parse_hint }}</div>
+        </div>
+      </div>
+
+      <div class="toolbar-row">
+        <button class="btn btn-indigo" type="submit">
+          <span class="vi" data-icon="Search" data-icon-size="16"></span>
+          <span>Rechercher</span>
+        </button>
+
+        <button
+          class="btn btn-ghost btn-sm"
+          type="button"
+          data-example-target="ids"
+          data-example-value="vol-0a1b2c3d, vol-4e5f6g7h vol-9i8u7y6t&#10;vol-3edc4rfv vol-0a1b2c3d vol-mnbvcxz1"
+        >
+          Exemple
+        </button>
+
+        {% if searched and volumes %}
+          <div class="chips" id="chips">
+            <span class="filter-label">Filtrer :</span>
+            {% for link in filter_links %}
+              <a
+                class="filter-chip {{ link.css_class }} {% if link.active %}active{% endif %}"
+                href="{{ link.url }}"
+              >
+                {% if link.status %}<span class="dot"></span>{% endif %}
+                {{ link.label }}
+                <span class="fc-count">{{ link.count }}</span>
+              </a>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+    </form>
+
+    {% if not searched %}
+      <div class="empty scale-in">
+        <div class="ghost-icon">
+          <span class="vi" data-icon="HardDrive" data-icon-size="52" data-icon-stroke="1.5"></span>
+        </div>
+        <h4>Aucune recherche lancée</h4>
+        <p>Saisissez un ou plusieurs IDs de volume puis cliquez sur « Rechercher ».</p>
+      </div>
+    {% elif not volumes %}
+      <div class="empty scale-in">
+        <div class="ghost-icon">
+          <span class="vi" data-icon="HardDrive" data-icon-size="52" data-icon-stroke="1.5"></span>
+        </div>
+        <h4>Aucun volume trouvé</h4>
+        <p>
+          Aucun volume correspondant dans <strong>{{ region }}</strong>
+          (les volumes supprimés cette session restent masqués).
+        </p>
+      </div>
+    {% else %}
+      <form method="post" action="{% url 'volumes' %}" data-bulk-form>
+        {% csrf_token %}
+        <input type="hidden" name="openstack_version" value="{{ openstack_version }}">
+        <input type="hidden" name="region" value="{{ region }}">
+        <input type="hidden" name="ids" value="{{ raw_ids }}">
+        <input type="hidden" name="action" value="" data-bulk-action>
+
+        <div class="bulk-bar" data-bulk-bar hidden>
+          <span class="bulk-count">
+            <span class="num" data-selected-count>0</span>
+            sélectionné(s)
+          </span>
+
+          <span class="bulk-warn" data-bulk-warning hidden>
+            <span class="vi" data-icon="AlertTriangle" data-icon-size="14"></span>
+            Réinitialisez d'abord les volumes non « available »
+          </span>
+
+          <div class="bulk-actions">
+            <button class="btn btn-amber btn-sm" type="submit" data-bulk-submit="bulk_reset">
+              Réinitialiser → available
+            </button>
+            <button class="btn btn-red btn-sm" type="submit" data-bulk-submit="bulk_delete">
+              <span class="vi" data-icon="Trash" data-icon-size="15"></span>
+              Supprimer
+            </button>
+          </div>
+        </div>
+
+        <div class="summary-line">
+          <div class="count">
+            <strong>{{ displayed_volumes|length }}</strong>
+            volume(s)
+            {% if selected_statuses %}
+              affiché(s) sur {{ volumes|length }}
+            {% endif %}
+            sur <strong>{{ openstack_version }}</strong>
+            dans <strong>{{ region }}</strong>
+          </div>
+        </div>
+
+        {% if not displayed_volumes %}
+          <div class="empty scale-in">
+            <div class="ghost-icon">
+              <span class="vi" data-icon="HardDrive" data-icon-size="52" data-icon-stroke="1.5"></span>
+            </div>
+            <h4>Aucun volume pour ce filtre</h4>
+            <p>Aucun volume ne correspond aux statuts sélectionnés. Ajustez les filtres ci-dessus.</p>
+          </div>
+        {% else %}
+          <div class="table-wrap scale-in">
+            <table>
+              <thead>
+                <tr>
+                  <th class="col-check">
+                    <input type="checkbox" class="checkbox" data-select-all>
+                  </th>
+                  <th>ID du volume</th>
+                  <th>Type</th>
+                  <th>Taille</th>
+                  <th>Statut</th>
+                  <th class="col-actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in displayed_rows %}
+                  {% with volume=row.volume %}
+                    <tr class="main-row">
+                      <td class="col-check">
+                        <input
+                          type="checkbox"
+                          class="checkbox"
+                          name="selected_ids"
+                          value="{{ volume.id }}"
+                          data-row-checkbox
+                          data-deletable="{% if volume.is_deletable %}true{% else %}false{% endif %}"
+                        >
+                      </td>
+                      <td><span class="mono">{{ volume.id }}</span></td>
+                      <td><span class="mono" style="color:var(--text-muted)">{{ volume.type }}</span></td>
+                      <td>
+                        {{ volume.size }}
+                        <span style="color:var(--text-soft);font-size:12px;">GiB</span>
+                      </td>
+                      <td>{% status_badge volume.status %}</td>
+                      <td class="col-actions">
+                        <div class="row-actions">
+                          <button
+                            class="icon-btn loupe"
+                            type="button"
+                            data-toggle-detail="detail-{{ forloop.counter }}"
+                            onclick="window.CT && window.CT.toggleDetail && window.CT.toggleDetail('detail-{{ forloop.counter }}', this)"
+                            title="Get info (volume show)"
+                            aria-label="Infos du volume"
+                          >
+                            <span class="vi" data-icon="Search" data-icon-size="16"></span>
+                          </button>
+
+                          {% if volume.is_deletable %}
+                            <button
+                              class="icon-btn danger"
+                              type="submit"
+                              name="action"
+                              value="delete"
+                              formaction="{% url 'volumes' %}"
+                              data-single-id="{{ volume.id }}"
+                              data-confirm="Supprimer définitivement le volume {{ volume.id }} ?"
+                              title="Supprimer définitivement"
+                              aria-label="Supprimer"
+                            >
+                              <span class="vi" data-icon="Trash" data-icon-size="16"></span>
+                            </button>
+                          {% elif volume.can_reset %}
+                            <button
+                              class="text-btn warn"
+                              type="submit"
+                              name="action"
+                              value="reset"
+                              data-single-id="{{ volume.id }}"
+                              title="Réinitialiser l'état → available"
+                            >
+                              Reset
+                            </button>
+                          {% endif %}
+                        </div>
+                      </td>
+                    </tr>
+
+                    <tr id="detail-{{ forloop.counter }}" class="detail-row" hidden>
+                      <td colspan="6">
+                        <div class="detail-panel">
+                          <div class="vs-head">
+                            <span class="vs-prompt">$</span>
+                            openstack volume show
+                            <span class="mono">{{ volume.id }}</span>
+                          </div>
+
+                          <div class="vs-table-wrap">
+                            <table class="vs-table">
+                              <tbody>
+                                {% for field in row.fields %}
+                                  <tr>
+                                    <td class="vs-field">{{ field.key }}</td>
+                                    <td class="vs-value">
+                                      {% if field.is_status %}
+                                        {% status_badge field.value %}
+                                      {% elif field.is_attachments %}
+                                        {% if field.value %}
+                                          <div class="vs-attach">
+                                            [{
+                                            {% for item in field.value %}
+                                              <div class="vs-attach-line">
+                                                '{{ item.key }}':
+                                                <span class="mono">'{{ item.value }}'</span>
+                                              </div>
+                                            {% endfor %}
+                                            }]
+                                          </div>
+                                        {% else %}
+                                          []
+                                        {% endif %}
+                                      {% elif field.is_account_link %}
+                                        <button
+                                          class="link-btn mono"
+                                          type="button"
+                                          data-account-id="{{ field.value }}"
+                                          onclick="window.CT && window.CT.openAccount && window.CT.openAccount('{{ field.value }}')"
+                                        >
+                                          {{ field.value }}
+                                        </button>
+                                      {% elif field.is_mapping %}
+                                        {% if field.value %}
+                                          <div class="vs-attach">
+                                            {
+                                            {% for key, value in field.value.items %}
+                                              <div class="vs-attach-line">
+                                                '{{ key }}':
+                                                <span class="mono">'{{ value }}'</span>
+                                              </div>
+                                            {% endfor %}
+                                            }
+                                          </div>
+                                        {% else %}
+                                          {}
+                                        {% endif %}
+                                      {% elif field.value == None or field.value == "" %}
+                                        <span class="vs-none">None</span>
+                                      {% else %}
+                                        <span class="{% if field.mono %}mono{% endif %}">
+                                          {{ field.value }}
+                                        </span>
+                                      {% endif %}
+                                    </td>
+                                  </tr>
+                                {% endfor %}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          {% if volume.is_deletable %}
+                            <div class="alert alert-green">
+                              <span class="alert-icon">
+                                <span class="vi" data-icon="CheckCircle" data-icon-size="18"></span>
+                              </span>
+                              <div class="alert-body">
+                                <span class="success-pill">
+                                  <span class="vi" data-icon="CheckCircle" data-icon-size="13"></span>
+                                  Prêt à être supprimé
+                                </span>
+                                <div style="margin-top:8px;color:#166534;">
+                                  Ce volume est <strong>available</strong> : il peut être supprimé, ou consulté.
+                                </div>
+                              </div>
+                            </div>
+                          {% else %}
+                            <div class="alert alert-amber">
+                              <span class="alert-icon">
+                                <span class="vi" data-icon="AlertTriangle" data-icon-size="18"></span>
+                              </span>
+                              <div class="alert-body">
+                                <strong>Action requise.</strong>
+                                Le statut <strong>{{ volume.status }}</strong> n'autorise pas la suppression.
+                                {% if volume.attachment %}
+                                  Il est rattaché au serveur
+                                  <span class="mono">{{ volume.attachment.server_id }}</span>
+                                  ({{ volume.attachment.device }}).
+                                {% endif %}
+                                Réinitialisez l'état vers <strong>available</strong>
+                                pour pouvoir le supprimer.
+                              </div>
+                            </div>
+                          {% endif %}
+                        </div>
+                      </td>
+                    </tr>
+                  {% endwith %}
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endif %}
+      </form>
+    {% endif %}
+  </div>
+{% endblock %}

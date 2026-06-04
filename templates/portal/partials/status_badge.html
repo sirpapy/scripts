@@ -1,0 +1,8 @@
+<span class="badge {{ status }}">
+  {% if is_error %}
+    <span class="vi" data-icon="AlertTriangle" data-icon-size="12"></span>
+  {% else %}
+    <span class="dot"></span>
+  {% endif %}
+  {{ status }}
+</span>

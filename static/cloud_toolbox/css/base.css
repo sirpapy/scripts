@@ -1,0 +1,152 @@
+/* ============================================================
+   base.css — Reset, layout global, navbar, footer, typographie
+   ============================================================ */
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+  background:
+    radial-gradient(1200px 600px at 50% -10%, var(--bg-grad-1), transparent 60%),
+    var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  line-height: 1.5;
+}
+
+/* Le composant racine Vue (#tpl-app) rend navbar + main + footer ici. */
+#app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Navbar ---------- */
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: saturate(180%) blur(12px);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+.navbar-inner {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  text-decoration: none;
+}
+.brand .logo {
+  width: 32px; height: 32px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, var(--indigo) 0%, var(--indigo-700) 100%);
+  display: grid; place-items: center;
+  box-shadow: 0 4px 10px -2px rgba(79, 70, 229, 0.45);
+}
+.brand .logo svg { color: #fff; }
+.nav-links {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+  align-items: center;
+}
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: background 0.2s var(--ease), color 0.2s var(--ease);
+}
+.nav-link:hover { background: var(--surface-2); color: var(--text); }
+.nav-link.active { background: var(--indigo-50); color: var(--indigo-700); }
+.logout-button {
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+}
+
+/* ---------- Main & footer ---------- */
+main {
+  flex: 1;
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 48px 24px 64px;
+}
+footer {
+  background: #fff;
+  border-top: 1px solid var(--border);
+  padding: 22px 24px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-soft);
+}
+
+/* ---------- Typographie : hero / titres / fil d'Ariane ---------- */
+.hero { text-align: center; max-width: 680px; margin: 12px auto 48px; }
+.hero h1 {
+  font-size: clamp(32px, 5vw, 46px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin: 0 0 14px;
+  background: linear-gradient(180deg, #1e293b 0%, #4338ca 140%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.hero p { font-size: 17px; color: var(--text-muted); margin: 0; line-height: 1.6; }
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--indigo-600);
+  background: var(--indigo-50);
+  padding: 5px 12px;
+  border-radius: 999px;
+  margin-bottom: 20px;
+}
+.page-head { margin-bottom: 28px; }
+.page-head h2 {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0 0 6px;
+  display: flex; align-items: center; gap: 12px;
+}
+.page-head p { color: var(--text-muted); margin: 0; font-size: 15px; }
+.crumb {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--text-soft); margin-bottom: 14px;
+}
+.crumb a { color: var(--text-muted); text-decoration: none; }
+.crumb a:hover { color: var(--indigo-600); }
+
+.mono {
+  font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  font-size: 13px;
+  color: var(--text);
+}

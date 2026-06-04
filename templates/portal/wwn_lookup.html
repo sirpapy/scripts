@@ -1,0 +1,131 @@
+{% extends "portal/base.html" %}
+{% load ui %}
+
+{% block title %}Recherche WWN — Cloud Toolbox{% endblock %}
+
+{% block content %}
+  <div class="animate-in duration-500">
+    <div class="crumb fade-in-down">
+      <a href="{% url 'index' %}">Accueil</a>
+      <span style="opacity:.6">/</span>
+      <span>Recherche WWN</span>
+    </div>
+
+    <div class="page-head fade-in-up">
+      <h2>
+        <span class="vi" data-icon="Link" data-icon-size="26"></span>
+        Recherche WWN
+      </h2>
+      <p>Retrouvez les volumes correspondant à un ou plusieurs WWN.</p>
+    </div>
+
+    <form
+      class="card card-pad fade-in-up"
+      method="get"
+      action="{% url 'wwn_lookup' %}"
+      style="animation-delay:.05s; margin-bottom:24px;"
+    >
+      <div class="form-grid">
+        <div class="field">
+          <label for="wwns">WWN</label>
+          <textarea
+            id="wwns"
+            name="wwns"
+            rows="1"
+            data-autoresize
+            placeholder="naa.6001405f8c8b2d01, naa.6001405f8c8b2d02&#10;(séparez par virgules, espaces ou retours à la ligne)"
+          >{{ raw_wwns }}</textarea>
+          <div class="hint">{{ parse_hint }}</div>
+        </div>
+      </div>
+
+      <div class="toolbar-row">
+        <button class="btn btn-indigo" type="submit">
+          <span class="vi" data-icon="Search" data-icon-size="16"></span>
+          Rechercher
+        </button>
+
+        <button
+          class="btn btn-ghost btn-sm"
+          type="button"
+          data-example-target="wwns"
+          data-example-value="naa.6001405f8c8b2d01, naa.6001405f8c8b2d02&#10;naa.6001405f8c8b2d03 naa.6001405f8c8b2d01"
+        >
+          Exemple
+        </button>
+      </div>
+    </form>
+
+    {% if not searched %}
+      <div class="empty scale-in">
+        <div class="ghost-icon">
+          <span class="vi" data-icon="Link" data-icon-size="52" data-icon-stroke="1.5"></span>
+        </div>
+        <h4>Aucune recherche lancée</h4>
+        <p>Saisissez un ou plusieurs WWN puis cliquez sur « Rechercher ».</p>
+      </div>
+    {% elif not matches %}
+      <div class="empty scale-in">
+        <div class="ghost-icon">
+          <span class="vi" data-icon="HardDrive" data-icon-size="52" data-icon-stroke="1.5"></span>
+        </div>
+        <h4>Aucun volume trouvé</h4>
+        <p>Aucun WWN exploitable n'a été fourni.</p>
+      </div>
+    {% else %}
+      <div class="summary-line">
+        <div class="count">
+          <strong>{{ matches|length }}</strong>
+          volume(s) correspondant(s)
+        </div>
+      </div>
+
+      <div class="table-wrap scale-in">
+        <table>
+          <thead>
+            <tr>
+              <th>WWN</th>
+              <th>ID du volume</th>
+              <th>Région</th>
+              <th>Backend</th>
+              <th>Taille</th>
+              <th>Statut</th>
+              <th>Tenant</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for match in matches %}
+              <tr class="main-row">
+                <td>
+                  <span class="mono">{{ match.wwn }}</span>
+                  <div class="hint mono">{{ match.host_path }}</div>
+                </td>
+                <td><span class="mono">{{ match.volume.id }}</span></td>
+                <td>{{ match.volume.region }}</td>
+                <td>
+                  {{ match.backend }}
+                  <div class="hint">{{ match.pool }}</div>
+                </td>
+                <td>
+                  {{ match.volume.size }}
+                  <span style="color:var(--text-soft);font-size:12px;">GiB</span>
+                </td>
+                <td>{% status_badge match.volume.status %}</td>
+                <td>
+                  <button
+                    class="link-btn mono"
+                    type="button"
+                    data-account-id="{{ match.volume.tenant_id }}"
+                    onclick="window.CT && window.CT.openAccount && window.CT.openAccount('{{ match.volume.tenant_id }}')"
+                  >
+                    {{ match.volume.tenant_id }}
+                  </button>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}
