@@ -6,7 +6,7 @@ from portal.services.ldap_auth import ldap_auth
 
 
 class InternalLdapBackend(BaseBackend):
-    def authenticate(self, request, username=None, password=None, **kwargs):
+    def authenticate(self, _request, username=None, password=None, **kwargs):
         if not username or not password:
             return None
 

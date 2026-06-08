@@ -104,13 +104,8 @@ $env:LDAP_DOMAIN="INTERNAL"
 $env:LDAP_AUTHORIZED_GROUPS="cloud-toolbox-users,cloud-toolbox-admins"
 ```
 
-`OPENSTACK_VERSIONS` accepte aussi une forme proche d'une liste :
-
-```text
-['v1', 'v2']
-```
-
-mais la forme recommandée reste :
+Les listes de valeurs sont des chaînes séparées par des virgules. La forme
+attendue est :
 
 ```text
 v1,v2
@@ -133,6 +128,11 @@ cloud_toolbox/
 portal/
   views.py
   authentication.py
+  mock_state.py
+  presenters.py
+  quota_forms.py
+  tool_catalog.py
+  view_helpers.py
   services/
     accounts.py
     cinder.py
@@ -172,6 +172,11 @@ Responsabilités :
   OpenStack, auth.
 - `cloud_toolbox/urls.py` : routes.
 - `portal/views.py` : vues Django, orchestration formulaire/service/template.
+- `portal/mock_state.py` : état de session utilisé seulement par les mocks.
+- `portal/presenters.py` : données préparées pour les templates.
+- `portal/quota_forms.py` : lecture et validation légère des champs quota.
+- `portal/tool_catalog.py` : groupes et tuiles visibles sur l'accueil.
+- `portal/view_helpers.py` : helpers courts pour settings, sélection et session.
 - `portal/services/*.py` : logique métier et mocks backend.
 - `templates/portal/*.html` : rendu HTML Django.
 - `static/cloud_toolbox/css/*.css` : design system et pages.
@@ -347,11 +352,11 @@ Fonctionnement :
 ## 8. Ajouter Un Nouvel Outil
 
 1. Créer la logique dans `portal/services/<outil>.py`.
-2. Ajouter la vue dans `portal/views.py` ou créer un module de vues si le fichier
-   devient trop gros.
+2. Ajouter la vue dans `portal/views.py` ou créer un module dédié si le fichier
+   recommence à mélanger trop de responsabilités.
 3. Ajouter la route dans `cloud_toolbox/urls.py`.
 4. Créer le template dans `templates/portal/<outil>.html`.
-5. Ajouter la tuile dans le bon groupe de `TOOL_GROUPS` dans `portal/views.py`.
+5. Ajouter la tuile dans le bon groupe de `TOOL_GROUPS` dans `portal/tool_catalog.py`.
 6. Ajouter du JS seulement si nécessaire dans `static/cloud_toolbox/js/app.js`.
 7. Lancer `python manage.py check`.
 
@@ -376,7 +381,7 @@ actions. Les vrais appels OpenStack devront devenir la source de vérité.
 
 ### Volumes
 
-Dans `portal/views.py`, supprimer :
+Dans `portal/mock_state.py` et `portal/view_helpers.py`, supprimer :
 
 - `session_set`;
 - `mark_deleted`;

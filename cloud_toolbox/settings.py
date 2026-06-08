@@ -5,17 +5,16 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-def parse_csv_setting(value):
-    cleaned = value.strip().strip("[]")
-    items = []
+def comma_separated_values(value):
+    values = []
 
-    for item in cleaned.split(","):
-        item = item.strip().strip("\"'")
+    for item in value.split(","):
+        cleaned = item.strip()
 
-        if item:
-            items.append(item)
+        if cleaned:
+            values.append(cleaned)
 
-    return items
+    return values
 
 
 SECRET_KEY = "dev-only-cloud-toolbox-secret-key"
@@ -90,14 +89,14 @@ LDAP_AUTHORIZED_GROUPS = [
     if group.strip()
 ]
 
-OPENSTACK_REGIONS = parse_csv_setting(
+OPENSTACK_REGIONS = comma_separated_values(
     os.environ.get(
         "OPENSTACK_REGIONS",
         "us-east-1,us-west-2,eu-west-1,eu-central-1,ap-southeast-1",
     )
 )
 
-OPENSTACK_VERSIONS = parse_csv_setting(
+OPENSTACK_VERSIONS = comma_separated_values(
     os.environ.get(
         "OPENSTACK_VERSIONS",
         os.environ.get("OPENSTACK_TARGETS", "v1,v2"),
