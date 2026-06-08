@@ -27,6 +27,7 @@ from portal.view_helpers import (
     openstack_versions_config,
     selected_openstack_version,
     selected_region,
+    session_set,
 )
 
 
