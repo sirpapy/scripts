@@ -2,7 +2,7 @@
    app.js
 
    Small browser behaviours for Django-rendered pages:
-     - replace icon placeholders with inline SVG;
+     - load static SVG icons;
      - keep textareas comfortable while typing;
      - open/close volume detail rows;
      - fetch mock account details from the backend;
@@ -75,10 +75,10 @@
   function renderIcons() {
     document.querySelectorAll("[data-icon]").forEach(function (target) {
       const name = target.getAttribute("data-icon");
-      const size = Number(target.getAttribute("data-icon-size") || 20);
-      const stroke = Number(target.getAttribute("data-icon-stroke") || 2);
 
-      target.innerHTML = CT.icon(name, size, stroke);
+      if (name) {
+        CT.renderIcon(target);
+      }
     });
   }
 

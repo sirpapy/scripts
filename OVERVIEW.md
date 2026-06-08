@@ -180,7 +180,9 @@ Responsabilités :
 - `portal/services/*.py` : logique métier et mocks backend.
 - `templates/portal/*.html` : rendu HTML Django.
 - `static/cloud_toolbox/css/*.css` : design system et pages.
+- `static/cloud_toolbox/icons/*.svg` : icônes SVG statiques.
 - `static/cloud_toolbox/js/app.js` : interactions locales uniquement.
+- `static/cloud_toolbox/js/icons.js` : charge les SVG depuis le dossier `icons`.
 - `static/cloud_toolbox/js/icons.js` : icônes inline.
 
 ---
