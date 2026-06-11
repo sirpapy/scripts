@@ -1,23 +1,53 @@
-union = ' UNION ALL '.join(['SELECT %s AS wwn, %s AS path_number'] * len(raw_volume_data))
+import re
 
-query = (
-    "SELECT wwn, path_number, volume_id, host, connection_info, "
-    "       attachment_deleted, volume_deleted "
-    "FROM ( "
-    "    SELECT t.wwn, t.path_number, "
-    "           va.volume_id, v.host, va.connection_info, "
-    "           va.deleted AS attachment_deleted, "
-    "           v.deleted AS volume_deleted, "
-    "           ROW_NUMBER() OVER ( "
-    "               PARTITION BY t.wwn "
-    "               ORDER BY (va.deleted = 0) DESC, va.created_at DESC "
-    "           ) AS rn "
-    f"   FROM ({union}) AS t "
-    "    LEFT JOIN volume_attachment va "
-    "        ON JSON_SEARCH(va.connection_info, 'one', t.wwn) IS NOT NULL "
-    "    LEFT JOIN volumes v ON va.volume_id = v.id "
-    ") ranked "
-    "WHERE rn = 1"
-)
+def get_volumes_by_properties(raw_volume_data, secrets):
+    if not raw_volume_data:
+        return []
 
-cursor.execute(query, [v for x in raw_volume_data for v in (x.wwn, x.paths_number)])
+    # ... connexion identique ...
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+    wwns = [x.wwn.lower().replace(':', '') for x in raw_volume_data]
+
+    # Un seul pattern : wwn1|wwn2|...|wwn49
+    pattern = '|'.join(re.escape(w) for w in wwns)
+
+    query = (
+        "SELECT va.volume_id, v.host, va.connection_info, "
+        "       va.deleted AS attachment_deleted, va.created_at, "
+        "       v.deleted AS volume_deleted "
+        "FROM volume_attachment va "
+        "LEFT JOIN volumes v ON va.volume_id = v.id "
+        "WHERE va.connection_info RLIKE %s "
+        "  AND (va.deleted = 0 OR va.created_at > NOW() - INTERVAL 30 DAY)"
+    )
+    cursor.execute(query, [pattern])
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    # Attribution + "dernier attachement" par WWN, en Python
+    best = {}
+    for row in rows:
+        ci = (row['connection_info'] or '').lower()
+        active = (row['attachment_deleted'] == 0)
+        for w in wwns:
+            if w in ci:
+                cur = best.get(w)
+                if (cur is None
+                        or (active and not cur['_active'])
+                        or (active == cur['_active']
+                            and row['created_at'] > cur['created_at'])):
+                    best[w] = {**row, '_active': active}
+
+    # Une ligne par entrée, NULL si introuvable
+    return [
+        {
+            'wwn': x.wwn,
+            'path_number': x.paths_number,
+            **{k: (best.get(x.wwn.lower().replace(':', ''), {}).get(k))
+               for k in ('volume_id', 'host', 'connection_info',
+                         'attachment_deleted', 'volume_deleted')},
+        }
+        for x in raw_volume_data
+    ]
