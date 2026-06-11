@@ -1,0 +1,23 @@
+union = ' UNION ALL '.join(['SELECT %s AS wwn, %s AS path_number'] * len(raw_volume_data))
+
+query = (
+    "SELECT wwn, path_number, volume_id, host, connection_info, "
+    "       attachment_deleted, volume_deleted "
+    "FROM ( "
+    "    SELECT t.wwn, t.path_number, "
+    "           va.volume_id, v.host, va.connection_info, "
+    "           va.deleted AS attachment_deleted, "
+    "           v.deleted AS volume_deleted, "
+    "           ROW_NUMBER() OVER ( "
+    "               PARTITION BY t.wwn "
+    "               ORDER BY (va.deleted = 0) DESC, va.created_at DESC "
+    "           ) AS rn "
+    f"   FROM ({union}) AS t "
+    "    LEFT JOIN volume_attachment va "
+    "        ON JSON_SEARCH(va.connection_info, 'one', t.wwn) IS NOT NULL "
+    "    LEFT JOIN volumes v ON va.volume_id = v.id "
+    ") ranked "
+    "WHERE rn = 1"
+)
+
+cursor.execute(query, [v for x in raw_volume_data for v in (x.wwn, x.paths_number)])
