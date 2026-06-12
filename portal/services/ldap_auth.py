@@ -7,7 +7,12 @@ def ldap_auth(domain, username, password, authorized_groups=None):
     login = f"{domain}\\{username}"
 
     for group in authorized_groups or []:
-        if username in users.list_group_users(group, login, password):
+        try:
+            group_users = users.list_group_users(group, login, password)
+        except ValueError:
+            return False
+
+        if username in group_users:
             return True
 
     return False

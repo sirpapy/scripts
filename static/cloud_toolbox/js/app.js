@@ -5,6 +5,7 @@
      - load static SVG icons;
      - keep textareas comfortable while typing;
      - open/close volume detail rows;
+     - filter volume rows without reloading;
      - fetch mock account details from the backend;
      - handle row and bulk volume actions.
    ============================================================ */
@@ -17,6 +18,7 @@
     bindExampleButtons();
     bindQuotaExampleButtons();
     bindDetailToggles();
+    bindVolumeFilters();
     bindAccountLookups();
     bindModalClose();
     bindStandaloneConfirmForms();
@@ -145,6 +147,92 @@
         CT.toggleDetail(detailId, button);
       }
     });
+  }
+
+
+  function bindVolumeFilters() {
+    const buttons = Array.from(document.querySelectorAll("[data-volume-filter]"));
+    const rows = Array.from(document.querySelectorAll("[data-volume-row]"));
+    const visibleCount = document.querySelector("[data-volume-visible-count]");
+    const filterNote = document.querySelector("[data-volume-filter-note]");
+    const emptyState = document.querySelector("[data-volume-filter-empty]");
+    const results = document.querySelector("[data-volume-results]");
+
+    if (!buttons.length || !rows.length) {
+      return;
+    }
+
+    buttons.forEach(function (button) {
+      button.addEventListener("click", function () {
+        applyVolumeFilter(button.getAttribute("data-volume-filter") || "");
+      });
+    });
+
+    function applyVolumeFilter(status) {
+      let count = 0;
+
+      buttons.forEach(function (button) {
+        button.classList.toggle(
+          "active",
+          (button.getAttribute("data-volume-filter") || "") === status
+        );
+      });
+
+      rows.forEach(function (row) {
+        const visible = !status || row.getAttribute("data-volume-status") === status;
+        const detailRow = nextDetailRow(row);
+
+        row.hidden = !visible;
+
+        if (detailRow) {
+          detailRow.hidden = true;
+        }
+
+        if (!visible) {
+          uncheckRow(row);
+        } else {
+          count += 1;
+        }
+      });
+
+      if (visibleCount) {
+        visibleCount.textContent = String(count);
+      }
+
+      if (filterNote) {
+        filterNote.hidden = !status;
+      }
+
+      if (emptyState) {
+        emptyState.hidden = count > 0;
+      }
+
+      if (results) {
+        results.hidden = count === 0;
+      }
+
+      document.dispatchEvent(new CustomEvent("volume-filter-change"));
+    }
+  }
+
+
+  function nextDetailRow(row) {
+    const nextRow = row.nextElementSibling;
+
+    if (nextRow && nextRow.hasAttribute("data-volume-detail")) {
+      return nextRow;
+    }
+
+    return null;
+  }
+
+
+  function uncheckRow(row) {
+    const checkbox = row.querySelector("[data-row-checkbox]");
+
+    if (checkbox) {
+      checkbox.checked = false;
+    }
   }
 
 
@@ -331,6 +419,7 @@
     });
 
     refreshBulkState();
+    document.addEventListener("volume-filter-change", refreshBulkState);
 
     function refreshBulkState() {
       const selected = selectedCheckboxes(checkboxes);

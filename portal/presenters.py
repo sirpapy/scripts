@@ -6,40 +6,25 @@ from portal.services import cinder, wwn
 from portal.view_helpers import input_token_count
 
 
-def build_filter_links(
-    openstack_version,
-    region,
-    raw_ids,
-    volumes,
-    selected_statuses,
-):
+def build_filter_links(volumes):
     counts = cinder.status_counts(volumes)
     links = [
         {
             "label": "Tous",
             "status": "",
             "count": len(volumes),
-            "active": not selected_statuses,
-            "url": volumes_url(openstack_version, region, raw_ids),
+            "active": True,
             "css_class": "all",
         }
     ]
 
     for status in cinder.available_statuses(volumes):
-        next_statuses = set(selected_statuses)
-
-        if status in next_statuses:
-            next_statuses.remove(status)
-        else:
-            next_statuses.add(status)
-
         links.append(
             {
                 "label": status,
                 "status": status,
                 "count": counts[status],
-                "active": status in selected_statuses or not selected_statuses,
-                "url": volumes_url(openstack_version, region, raw_ids, next_statuses),
+                "active": False,
                 "css_class": status,
             }
         )

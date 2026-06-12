@@ -200,13 +200,6 @@ def available_statuses(volumes: list[Volume]) -> list[str]:
     return [status for status in FILTER_ORDER if counts.get(status, 0) > 0]
 
 
-def filtered_volumes(volumes: list[Volume], selected_statuses: set[str]) -> list[Volume]:
-    if not selected_statuses:
-        return volumes
-
-    return [volume for volume in volumes if volume.status in selected_statuses]
-
-
 def volume_key(volume_id: str, openstack_version: str, region: str) -> str:
     return f"{volume_id}@{openstack_version}@{region}"
 

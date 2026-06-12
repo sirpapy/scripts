@@ -89,14 +89,15 @@
           <div class="chips" id="chips">
             <span class="filter-label">Filtrer :</span>
             {% for link in filter_links %}
-              <a
+              <button
+                type="button"
                 class="filter-chip {{ link.css_class }} {% if link.active %}active{% endif %}"
-                href="{{ link.url }}"
+                data-volume-filter="{{ link.status }}"
               >
                 {% if link.status %}<span class="dot"></span>{% endif %}
                 {{ link.label }}
                 <span class="fc-count">{{ link.count }}</span>
-              </a>
+              </button>
             {% endfor %}
           </div>
         {% endif %}
@@ -154,26 +155,26 @@
 
         <div class="summary-line">
           <div class="count">
-            <strong>{{ displayed_volumes|length }}</strong>
+            <strong data-volume-visible-count>{{ volumes|length }}</strong>
             volume(s)
-            {% if selected_statuses %}
-              affiché(s) sur {{ volumes|length }}
-            {% endif %}
+            <span data-volume-filter-note hidden>
+              affiché(s) sur
+              <span data-volume-total-count>{{ volumes|length }}</span>
+            </span>
             sur <strong>{{ openstack_version }}</strong>
             dans <strong>{{ region }}</strong>
           </div>
         </div>
 
-        {% if not displayed_volumes %}
-          <div class="empty scale-in">
-            <div class="ghost-icon">
-              <span class="vi" data-icon="HardDrive" data-icon-size="52" data-icon-stroke="1.5"></span>
-            </div>
-            <h4>Aucun volume pour ce filtre</h4>
-            <p>Aucun volume ne correspond aux statuts sélectionnés. Ajustez les filtres ci-dessus.</p>
+        <div class="empty scale-in" data-volume-filter-empty hidden>
+          <div class="ghost-icon">
+            <span class="vi" data-icon="HardDrive" data-icon-size="52" data-icon-stroke="1.5"></span>
           </div>
-        {% else %}
-          <div class="table-wrap scale-in">
+          <h4>Aucun volume pour ce filtre</h4>
+          <p>Aucun volume ne correspond au statut sélectionné. Ajustez les filtres ci-dessus.</p>
+        </div>
+
+        <div class="table-wrap scale-in" data-volume-results>
             <table>
               <thead>
                 <tr>
@@ -190,7 +191,7 @@
               <tbody>
                 {% for row in displayed_rows %}
                   {% with volume=row.volume %}
-                    <tr class="main-row">
+                    <tr class="main-row" data-volume-row data-volume-status="{{ volume.status }}">
                       <td class="col-check">
                         <input
                           type="checkbox"
@@ -251,7 +252,7 @@
                       </td>
                     </tr>
 
-                    <tr id="detail-{{ forloop.counter }}" class="detail-row" hidden>
+                    <tr id="detail-{{ forloop.counter }}" class="detail-row" data-volume-detail hidden>
                       <td colspan="6">
                         <div class="detail-panel">
                           <div class="vs-head">
@@ -363,7 +364,6 @@
               </tbody>
             </table>
           </div>
-        {% endif %}
       </form>
     {% endif %}
   </div>

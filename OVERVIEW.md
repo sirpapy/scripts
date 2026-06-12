@@ -270,6 +270,8 @@ Fonctionnement :
 - Recherche par `openstack_version`, `region`, IDs de volumes.
 - Parsing des IDs côté Python.
 - Mock déterministe par `volume_id + openstack_version + region`.
+- Les filtres de statut sont appliqués côté navigateur après la recherche.
+  Ils ne doivent pas rappeler le backend.
 - Détails type `openstack volume show`.
 - Tenant ID cliquable, ouvre la popup account.
 - Reset/delete sont simulés avec une mémoire de session.

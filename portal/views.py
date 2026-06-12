@@ -49,7 +49,6 @@ def volumes(request):
     regions = openstack_regions()
     region = selected_region(request.GET.get("region"), regions)
     raw_ids = request.GET.get("ids", "")
-    selected_statuses = set(request.GET.getlist("status"))
     ids = cinder.parse_ids(raw_ids)
     searched = "ids" in request.GET
 
@@ -60,10 +59,9 @@ def volumes(request):
         deleted_keys=session_set(request, "deleted_volumes"),
         reset_keys=session_set(request, "reset_volumes"),
     )
-    displayed_volumes = cinder.filtered_volumes(all_volumes, selected_statuses)
     displayed_rows = [
         {"volume": volume, "fields": volume_fields(volume)}
-        for volume in displayed_volumes
+        for volume in all_volumes
     ]
 
     context = {
@@ -75,18 +73,10 @@ def volumes(request):
         "parse_hint": volume_parse_hint(raw_ids),
         "searched": searched,
         "volumes": all_volumes,
-        "displayed_volumes": displayed_volumes,
         "displayed_rows": displayed_rows,
         "status_counts": cinder.status_counts(all_volumes),
         "present_statuses": cinder.available_statuses(all_volumes),
-        "selected_statuses": selected_statuses,
-        "filter_links": build_filter_links(
-            openstack_version,
-            region,
-            raw_ids,
-            all_volumes,
-            selected_statuses,
-        ),
+        "filter_links": build_filter_links(all_volumes),
     }
 
     return render(request, "portal/volumes.html", context)

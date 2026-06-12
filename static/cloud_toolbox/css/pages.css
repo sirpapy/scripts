@@ -314,6 +314,7 @@
   margin-right: 2px;
 }
 .filter-chip {
+  appearance: none;
   display: inline-flex;
   align-items: center;
   gap: 7px;
