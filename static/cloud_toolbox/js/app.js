@@ -157,6 +157,7 @@
     const filterNote = document.querySelector("[data-volume-filter-note]");
     const emptyState = document.querySelector("[data-volume-filter-empty]");
     const results = document.querySelector("[data-volume-results]");
+    const activeStatuses = new Set();
 
     if (!buttons.length || !rows.length) {
       return;
@@ -164,22 +165,35 @@
 
     buttons.forEach(function (button) {
       button.addEventListener("click", function () {
-        applyVolumeFilter(button.getAttribute("data-volume-filter") || "");
+        toggleVolumeFilter(button.getAttribute("data-volume-filter") || "");
       });
     });
 
-    function applyVolumeFilter(status) {
+    function toggleVolumeFilter(status) {
+      if (!status) {
+        activeStatuses.clear();
+      } else if (activeStatuses.has(status)) {
+        activeStatuses.delete(status);
+      } else {
+        activeStatuses.add(status);
+      }
+
+      applyVolumeFilters();
+    }
+
+    function applyVolumeFilters() {
       let count = 0;
 
       buttons.forEach(function (button) {
-        button.classList.toggle(
-          "active",
-          (button.getAttribute("data-volume-filter") || "") === status
-        );
+        const status = button.getAttribute("data-volume-filter") || "";
+        const active = status ? activeStatuses.has(status) : activeStatuses.size === 0;
+
+        button.classList.toggle("active", active);
       });
 
       rows.forEach(function (row) {
-        const visible = !status || row.getAttribute("data-volume-status") === status;
+        const rowStatus = row.getAttribute("data-volume-status");
+        const visible = activeStatuses.size === 0 || activeStatuses.has(rowStatus);
         const detailRow = nextDetailRow(row);
 
         row.hidden = !visible;
@@ -200,7 +214,7 @@
       }
 
       if (filterNote) {
-        filterNote.hidden = !status;
+        filterNote.hidden = activeStatuses.size === 0;
       }
 
       if (emptyState) {
