@@ -11,6 +11,7 @@ STATUSES = [
     "error",
     "attaching",
     "detaching",
+    "deleting",
     "reserved",
     "maintenance",
     "error_deleting",
@@ -21,6 +22,7 @@ FILTER_ORDER = [
     "reserved",
     "attaching",
     "detaching",
+    "deleting",
     "maintenance",
     "error",
     "error_deleting",
@@ -197,7 +199,13 @@ def status_counts(volumes: list[Volume]) -> dict[str, int]:
 
 def available_statuses(volumes: list[Volume]) -> list[str]:
     counts = status_counts(volumes)
-    return [status for status in FILTER_ORDER if counts.get(status, 0) > 0]
+    statuses = [status for status in FILTER_ORDER if counts.get(status, 0) > 0]
+
+    for status in counts:
+        if status not in FILTER_ORDER:
+            statuses.append(status)
+
+    return statuses
 
 
 def volume_key(volume_id: str, openstack_version: str, region: str) -> str:
