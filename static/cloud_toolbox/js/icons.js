@@ -27,6 +27,7 @@
 
   const cache = {};
 
+  // Returns the static URL for an icon.
   CT.iconUrl = function (name) {
     const fileName = ICONS[name];
 
@@ -37,6 +38,7 @@
     return staticUrl() + "cloud_toolbox/icons/" + fileName + ".svg";
   };
 
+  // Loads an icon into one placeholder.
   CT.renderIcon = function (target) {
     const name = target.getAttribute("data-icon");
     const url = CT.iconUrl(name);
@@ -56,6 +58,7 @@
       });
   };
 
+  // Fetches an SVG icon once and caches it.
   function loadIcon(url) {
     if (!cache[url]) {
       cache[url] = fetch(url).then(function (response) {
@@ -70,6 +73,7 @@
     return cache[url];
   }
 
+  // Applies size and stroke attributes to an icon.
   function resizeIcon(target) {
     const svg = target.querySelector("svg");
 
@@ -87,6 +91,7 @@
     svg.setAttribute("focusable", "false");
   }
 
+  // Returns the configured static files prefix.
   function staticUrl() {
     return document.body.getAttribute("data-static-url") || "/static/";
   }

@@ -162,8 +162,11 @@ static/
       components.css
       pages.css
     js/
-      app.js
+      accounts.js
+      common.js
       icons.js
+      quotas.js
+      volumes.js
 ```
 
 Responsabilités :
@@ -181,8 +184,11 @@ Responsabilités :
 - `templates/portal/*.html` : rendu HTML Django.
 - `static/cloud_toolbox/css/*.css` : design system et pages.
 - `static/cloud_toolbox/icons/*.svg` : icônes SVG statiques.
-- `static/cloud_toolbox/js/app.js` : interactions locales uniquement.
 - `static/cloud_toolbox/js/icons.js` : charge les SVG depuis le dossier `icons`.
+- `static/cloud_toolbox/js/common.js` : comportements communs simples.
+- `static/cloud_toolbox/js/accounts.js` : popup et API account.
+- `static/cloud_toolbox/js/volumes.js` : filtres, détails et actions volumes.
+- `static/cloud_toolbox/js/quotas.js` : comportements du formulaire quotas.
 - `static/cloud_toolbox/js/icons.js` : icônes inline.
 
 ---
@@ -361,7 +367,7 @@ Fonctionnement :
 3. Ajouter la route dans `cloud_toolbox/urls.py`.
 4. Créer le template dans `templates/portal/<outil>.html`.
 5. Ajouter la tuile dans le bon groupe de `TOOL_GROUPS` dans `portal/tool_catalog.py`.
-6. Ajouter du JS seulement si nécessaire dans `static/cloud_toolbox/js/app.js`.
+6. Ajouter du JS seulement si nécessaire, dans le fichier de page concerné.
 7. Lancer `python manage.py check`.
 
 Groupes existants :

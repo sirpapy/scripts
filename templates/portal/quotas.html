@@ -1,4 +1,5 @@
 {% extends "portal/base.html" %}
+{% load static %}
 
 {% block title %}Gestionnaire de Quotas — Cloud Toolbox{% endblock %}
 
@@ -208,4 +209,8 @@
       </form>
     {% endif %}
   </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{% static 'cloud_toolbox/js/quotas.js' %}?v=1"></script>
 {% endblock %}

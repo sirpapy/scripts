@@ -1,4 +1,5 @@
 {% extends "portal/base.html" %}
+{% load static %}
 {% load ui %}
 
 {% block title %}Gestionnaire de Volumes — Cloud Toolbox{% endblock %}
@@ -367,4 +368,8 @@
       </form>
     {% endif %}
   </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{% static 'cloud_toolbox/js/volumes.js' %}?v=1"></script>
 {% endblock %}
