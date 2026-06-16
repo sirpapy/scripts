@@ -386,8 +386,12 @@
 
     if (selectAll) {
       selectAll.addEventListener("change", function () {
-        checkboxes.forEach(function (checkbox) {
+        visibleCheckboxes(checkboxes).forEach(function (checkbox) {
           checkbox.checked = selectAll.checked;
+        });
+
+        hiddenCheckboxes(checkboxes).forEach(function (checkbox) {
+          checkbox.checked = false;
         });
 
         refreshBulkState();
@@ -413,6 +417,9 @@
 
     form.addEventListener("submit", function (event) {
       const submitter = event.submitter;
+      hiddenCheckboxes(checkboxes).forEach(function (checkbox) {
+        checkbox.checked = false;
+      });
 
       if (submitter && submitter.hasAttribute("data-confirm")) {
         const confirmed = window.confirm(submitter.getAttribute("data-confirm"));
@@ -423,7 +430,7 @@
       }
 
       if (submitter && submitter.getAttribute("data-bulk-submit") === "bulk_delete") {
-        const count = selectedCheckboxes(checkboxes).length;
+        const count = selectedCheckboxes(visibleCheckboxes(checkboxes)).length;
         const confirmed = window.confirm("Supprimer définitivement " + count + " volume(s) ?");
 
         if (!confirmed) {
@@ -436,7 +443,8 @@
     document.addEventListener("volume-filter-change", refreshBulkState);
 
     function refreshBulkState() {
-      const selected = selectedCheckboxes(checkboxes);
+      const visible = visibleCheckboxes(checkboxes);
+      const selected = selectedCheckboxes(visible);
       const blocked = selected.some(function (checkbox) {
         return checkbox.getAttribute("data-deletable") !== "true";
       });
@@ -458,10 +466,31 @@
       }
 
       if (selectAll) {
-        selectAll.checked = selected.length === checkboxes.length && checkboxes.length > 0;
-        selectAll.indeterminate = selected.length > 0 && selected.length < checkboxes.length;
+        selectAll.checked = selected.length === visible.length && visible.length > 0;
+        selectAll.indeterminate = selected.length > 0 && selected.length < visible.length;
       }
     }
+  }
+
+
+  function visibleCheckboxes(checkboxes) {
+    return checkboxes.filter(function (checkbox) {
+      return checkboxIsVisible(checkbox);
+    });
+  }
+
+
+  function hiddenCheckboxes(checkboxes) {
+    return checkboxes.filter(function (checkbox) {
+      return !checkboxIsVisible(checkbox);
+    });
+  }
+
+
+  function checkboxIsVisible(checkbox) {
+    const row = checkbox.closest("[data-volume-row]");
+
+    return !row || !row.hidden;
   }
 
 
