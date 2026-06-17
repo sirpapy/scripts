@@ -69,12 +69,16 @@ class Volume:
     attachment: Attachment | None
 
     @property
+    def is_actionable(self) -> bool:
+        return self.status != "in-use"
+
+    @property
     def is_deletable(self) -> bool:
-        return self.status == "available"
+        return self.is_actionable and self.status == "available"
 
     @property
     def can_reset(self) -> bool:
-        return self.status != "available"
+        return self.is_actionable and self.status != "available"
 
 
 def parse_ids(raw_input: str) -> list[str]:

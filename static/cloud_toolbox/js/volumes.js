@@ -138,6 +138,7 @@
       selectAll.addEventListener("change", function () {
         setVisibleCheckboxes(checkboxes, selectAll.checked);
         clearHiddenCheckboxes(checkboxes);
+        clearBlockedCheckboxes(checkboxes);
         refreshBulkState();
       });
     }
@@ -159,6 +160,7 @@
     form.addEventListener("submit", function (event) {
       const submitter = event.submitter;
       clearHiddenCheckboxes(checkboxes);
+      clearBlockedCheckboxes(checkboxes);
 
       if (submitter && submitter.hasAttribute("data-confirm")) {
         const confirmed = window.confirm(submitter.getAttribute("data-confirm"));
@@ -185,7 +187,9 @@
 
     // Refreshes bulk buttons and selection counters.
     function refreshBulkState() {
-      const visible = visibleCheckboxes(checkboxes);
+      clearBlockedCheckboxes(checkboxes);
+
+      const visible = visibleActionableCheckboxes(checkboxes);
       const selected = selectedCheckboxes(visible);
       const hasBlockedVolume = selected.some(function (checkbox) {
         return checkbox.getAttribute("data-deletable") !== "true";
@@ -210,6 +214,7 @@
       if (selectAll) {
         selectAll.checked = selected.length === visible.length && visible.length > 0;
         selectAll.indeterminate = selected.length > 0 && selected.length < visible.length;
+        selectAll.disabled = visible.length === 0;
       }
     }
   }
@@ -243,7 +248,7 @@
 
   // Sets only visible volume checkboxes.
   function setVisibleCheckboxes(checkboxes, checked) {
-    visibleCheckboxes(checkboxes).forEach(function (checkbox) {
+    visibleActionableCheckboxes(checkboxes).forEach(function (checkbox) {
       checkbox.checked = checked;
     });
   }
@@ -262,10 +267,26 @@
     });
   }
 
+  // Clears checkboxes that are not allowed in actions.
+  function clearBlockedCheckboxes(checkboxes) {
+    checkboxes.forEach(function (checkbox) {
+      if (!checkboxIsActionable(checkbox)) {
+        checkbox.checked = false;
+      }
+    });
+  }
+
   // Returns checkboxes from visible rows.
   function visibleCheckboxes(checkboxes) {
     return checkboxes.filter(function (checkbox) {
       return checkboxIsVisible(checkbox);
+    });
+  }
+
+  // Returns visible checkboxes that can be used in actions.
+  function visibleActionableCheckboxes(checkboxes) {
+    return checkboxes.filter(function (checkbox) {
+      return checkboxIsVisible(checkbox) && checkboxIsActionable(checkbox);
     });
   }
 
@@ -281,6 +302,11 @@
     const row = checkbox.closest("[data-volume-row]");
 
     return !row || !row.hidden;
+  }
+
+  // Checks whether a checkbox can be sent in an action.
+  function checkboxIsActionable(checkbox) {
+    return !checkbox.disabled && checkbox.getAttribute("data-actionable") === "true";
   }
 
   // Returns checked checkboxes.

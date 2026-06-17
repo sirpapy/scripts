@@ -200,7 +200,9 @@
                           name="selected_ids"
                           value="{{ volume.id }}"
                           data-row-checkbox
+                          data-actionable="{% if volume.is_actionable %}true{% else %}false{% endif %}"
                           data-deletable="{% if volume.is_deletable %}true{% else %}false{% endif %}"
+                          {% if not volume.is_actionable %}disabled title="Volume in-use non actionnable"{% endif %}
                         >
                       </td>
                       <td><span class="mono">{{ volume.id }}</span></td>

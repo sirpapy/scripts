@@ -188,17 +188,53 @@ def handle_volume_action(request):
     )
     region = selected_region(request.POST.get("region"), openstack_regions())
     raw_ids = request.POST.get("ids", "")
-    selected_ids = request.POST.getlist("selected_ids")
+    selected_volumes = selected_volumes_from_post(
+        request,
+        raw_ids,
+        openstack_version,
+        region,
+    )
 
     if action in {"reset", "bulk_reset"}:
-        mark_reset(request, openstack_version, region, selected_ids)
-        messages.success(request, f"{len(selected_ids)} volume(s) reinitialise(s) vers available.")
+        resettable_ids = [volume.id for volume in selected_volumes if volume.can_reset]
+        ignored_count = len(selected_volumes) - len(resettable_ids)
+
+        if resettable_ids:
+            mark_reset(request, openstack_version, region, resettable_ids)
+            messages.success(request, f"{len(resettable_ids)} volume(s) reinitialise(s) vers available.")
+
+        warn_ignored_volumes(request, ignored_count)
 
     if action in {"delete", "bulk_delete"}:
-        mark_deleted(request, openstack_version, region, selected_ids)
-        messages.success(request, f"{len(selected_ids)} volume(s) supprime(s).")
+        deletable_ids = [volume.id for volume in selected_volumes if volume.is_deletable]
+        ignored_count = len(selected_volumes) - len(deletable_ids)
+
+        if deletable_ids:
+            mark_deleted(request, openstack_version, region, deletable_ids)
+            messages.success(request, f"{len(deletable_ids)} volume(s) supprime(s).")
+
+        warn_ignored_volumes(request, ignored_count)
 
     return redirect(volumes_url(openstack_version, region, raw_ids))
+
+
+def selected_volumes_from_post(request, raw_ids, openstack_version, region):
+    searched_ids = set(cinder.parse_ids(raw_ids))
+    posted_ids = cinder.parse_ids(" ".join(request.POST.getlist("selected_ids")))
+    selected_ids = [volume_id for volume_id in posted_ids if volume_id in searched_ids]
+
+    return cinder.build_volumes(
+        ids=selected_ids,
+        openstack_version=openstack_version,
+        region=region,
+        deleted_keys=session_set(request, "deleted_volumes"),
+        reset_keys=session_set(request, "reset_volumes"),
+    )
+
+
+def warn_ignored_volumes(request, count):
+    if count:
+        messages.warning(request, f"{count} volume(s) ignore(s) car non actionnable(s).")
 
 
 def build_quota_context(request):
