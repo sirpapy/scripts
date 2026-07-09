@@ -1,0 +1,553 @@
+{% extends "portal/base.html" %}
+{% load static %}
+
+{% block title %}Bucket IAM Policies — Cloud Toolbox{% endblock %}
+
+{% block styles %}
+  <link rel="stylesheet" href="{% static 'cloud_toolbox/css/bucket_policies.css' %}?v=7">
+{% endblock %}
+
+{% block content %}
+  <div class="animate-in duration-500">
+    <div class="crumb fade-in-down">
+      <a href="{% url 'index' %}">Accueil</a>
+      <span style="opacity:.6">/</span>
+      <span>Bucket IAM Policies</span>
+    </div>
+
+    <div class="page-head fade-in-up">
+      <h2>
+        <span class="vi" data-icon="Server" data-icon-size="26"></span>
+        Bucket IAM Policies
+      </h2>
+      <p>Recherchez les policies IAM qui touchent un bucket Object Storage.</p>
+    </div>
+
+    <form
+      class="card card-pad fade-in-up bucket-policy-search"
+      method="get"
+      action="{% url 'bucket_policies' %}"
+      style="animation-delay:.05s;"
+    >
+      <div class="form-grid bucket-policy-form-grid">
+        <div class="field">
+          <label for="ring">Ring</label>
+          <select id="ring" name="ring">
+            {% for ring_option in rings %}
+              <option value="{{ ring_option }}" {% if ring_option == ring %}selected{% endif %}>
+                {{ ring_option }}
+              </option>
+            {% endfor %}
+          </select>
+          <div class="hint">Ring Object Storage cible.</div>
+        </div>
+
+        <div class="field">
+          <label for="bucket_name">Bucket name</label>
+          <input
+            id="bucket_name"
+            name="bucket_name"
+            value="{{ bucket_name }}"
+            placeholder="crr-source-test"
+          >
+          <div class="hint">Nom du bucket à analyser.</div>
+        </div>
+      </div>
+
+      <div class="toolbar-row">
+        <button class="btn btn-indigo" type="submit">
+          <span class="vi" data-icon="Search" data-icon-size="16"></span>
+          <span>Récupérer les policies</span>
+        </button>
+
+        <button
+          class="btn btn-ghost btn-sm"
+          type="button"
+          data-bucket-policy-example
+          data-ring="{{ rings.0 }}"
+          data-bucket-name="crr-source-test"
+        >
+          Exemple
+        </button>
+      </div>
+    </form>
+
+    {% if not searched %}
+      <div class="empty scale-in">
+        <div class="ghost-icon">
+          <span class="vi" data-icon="Server" data-icon-size="52" data-icon-stroke="1.5"></span>
+        </div>
+        <h4>Aucun bucket analysé</h4>
+        <p>Saisissez un bucket name pour récupérer les policies IAM côté backend.</p>
+      </div>
+    {% elif bucket %}
+      <div class="bucket-result-head">
+        <div>
+          Bucket trouvé pour
+          <strong class="mono">{{ bucket.name }}</strong>
+          sur
+          <strong class="mono">{{ bucket.ring }}</strong>
+        </div>
+      </div>
+
+      <section class="bucket-panel scale-in">
+        <header class="bucket-panel-head">
+          <div class="bucket-title">
+            <span class="bucket-icon">
+              <span class="vi" data-icon="Cloud" data-icon-size="20"></span>
+            </span>
+            <div>
+              <div class="bucket-kicker">Bucket</div>
+              <h3>{{ bucket.name }}</h3>
+            </div>
+          </div>
+
+          <div class="bucket-header-actions">
+            <div class="bucket-badges">
+              <span class="bucket-pill">{{ bucket.ring }}</span>
+              {% if bucket.deleted %}
+                <span class="bucket-pill bad">Deleted</span>
+              {% else %}
+                <span class="bucket-pill good">Actif</span>
+              {% endif %}
+              {% if bucket.object_lock_enabled %}
+                <span class="bucket-pill good">Object Lock</span>
+              {% endif %}
+              {% if bucket.versioning_enabled %}
+                <span class="bucket-pill good">Versioning</span>
+              {% endif %}
+              {% if bucket.replication_destination %}
+                <span class="bucket-pill good">Replication</span>
+              {% endif %}
+            </div>
+
+            <button class="btn btn-ghost btn-sm" type="button" data-copy-from="bucket-json">
+              Copier JSON bucket
+            </button>
+          </div>
+        </header>
+
+        <section class="bucket-section">
+          <h4>Identité & localisation</h4>
+
+          <dl class="bucket-detail-grid">
+            <div>
+              <dt>Owner display name</dt>
+              <dd class="mono">{{ bucket.owner_display_name }}</dd>
+            </div>
+            <div class="owner-fact">
+              <dt>Owner</dt>
+              <dd>
+                <button class="owner-button mono" type="button" data-policy-modal-open>
+                  {{ bucket.owner }}
+                </button>
+              </dd>
+            </div>
+            <div>
+              <dt>Création</dt>
+              <dd>{{ bucket.creation_date|date:"d/m/Y H:i:s" }}</dd>
+            </div>
+            <div>
+              <dt>Location constraint</dt>
+              <dd>{{ bucket.location_constraint }}</dd>
+            </div>
+            <div>
+              <dt>UID</dt>
+              <dd class="mono">{{ bucket.uid }}</dd>
+            </div>
+            <div>
+              <dt>Modèle metadata</dt>
+              <dd>v{{ bucket.model_version }}</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="bucket-section">
+          <h4>Sécurité & protections</h4>
+
+          <div class="bucket-status-list">
+            <div>
+              <span>Object Lock</span>
+              {% if bucket.object_lock_enabled %}
+                <strong class="state-pill good">Activé</strong>
+              {% else %}
+                <strong class="state-pill muted">Absent</strong>
+              {% endif %}
+            </div>
+            <div>
+              <span>Versioning</span>
+              {% if bucket.versioning_enabled %}
+                <strong class="state-pill good">Enabled</strong>
+              {% else %}
+                <strong class="state-pill muted">Disabled</strong>
+              {% endif %}
+            </div>
+            <div>
+              <span>Bucket policy</span>
+              {% if bucket.bucket_policy_present %}
+                <strong class="state-pill warn">Présente</strong>
+              {% else %}
+                <strong class="state-pill muted">Absente</strong>
+              {% endif %}
+            </div>
+            <div>
+              <span>Chiffrement serveur</span>
+              {% if bucket.server_side_encryption_present %}
+                <strong class="state-pill good">Présent</strong>
+              {% else %}
+                <strong class="state-pill muted">Absent</strong>
+              {% endif %}
+            </div>
+          </div>
+
+          {% if bucket.object_lock_enabled %}
+            <dl class="bucket-detail-grid compact">
+              <div>
+                <dt>Mode de rétention</dt>
+                <dd>{{ bucket.object_lock_mode }}</dd>
+              </div>
+              <div>
+                <dt>Durée par défaut</dt>
+                <dd>{{ bucket.object_lock_retention_days }} jour(s)</dd>
+              </div>
+            </dl>
+          {% endif %}
+        </section>
+
+        <section class="bucket-section advanced-section">
+          <h4>Configurations avancées</h4>
+
+          <div class="bucket-status-list">
+            <div>
+              <span>Lifecycle</span>
+              {% if bucket.lifecycle_present %}
+                <strong class="state-pill good">Configuré</strong>
+              {% else %}
+                <strong class="state-pill muted">Absent</strong>
+              {% endif %}
+            </div>
+            <div>
+              <span>Replication</span>
+              {% if bucket.replication_enabled %}
+                <strong class="state-pill good">Configurée</strong>
+              {% else %}
+                <strong class="state-pill muted">Absente</strong>
+              {% endif %}
+            </div>
+            <div>
+              <span>CORS</span>
+              {% if bucket.cors_present %}
+                <strong class="state-pill warn">Présent</strong>
+              {% else %}
+                <strong class="state-pill muted">Absent</strong>
+              {% endif %}
+            </div>
+            <div>
+              <span>Notifications</span>
+              {% if bucket.notification_present %}
+                <strong class="state-pill warn">Présentes</strong>
+              {% else %}
+                <strong class="state-pill muted">Absentes</strong>
+              {% endif %}
+            </div>
+          </div>
+
+          {% if bucket.replication_enabled %}
+            <div
+              class="replication-map replication-map-{{ bucket.replication_direction }}"
+              aria-label="{% if bucket.replication_direction == 'bidirectional' %}Réplication dans les deux sens{% else %}Réplication source vers cible{% endif %}"
+            >
+              <div class="replication-bucket source">
+                <span>
+                  {% if bucket.replication_direction == "bidirectional" %}
+                    Bucket actuel
+                  {% else %}
+                    Bucket source
+                  {% endif %}
+                </span>
+                <div>
+                  <span class="replication-bucket-icon">
+                    <span class="vi" data-icon="Bucket" data-icon-size="30"></span>
+                  </span>
+                  <strong class="mono">{{ bucket.replication_source }}</strong>
+                </div>
+              </div>
+
+              <div class="replication-bridge">
+                <span class="replication-line" aria-hidden="true"></span>
+                <span class="replication-sync" aria-hidden="true">
+                  <span class="vi" data-icon="RefreshCw" data-icon-size="25"></span>
+                </span>
+                <span class="replication-caption">
+                  {% if bucket.replication_direction == "bidirectional" %}
+                    <strong>Replication active</strong>
+                    <span>Deux sens</span>
+                  {% else %}
+                    <strong>Replication active</strong>
+                    <span>source vers cible</span>
+                  {% endif %}
+                </span>
+              </div>
+
+              <div class="replication-bucket target">
+                <span>
+                  {% if bucket.replication_direction == "bidirectional" %}
+                    Bucket pair
+                  {% elif bucket.replication_direction == "inbound" %}
+                    Bucket actuel répliqué
+                  {% else %}
+                    Bucket cible répliqué
+                  {% endif %}
+                </span>
+                <div>
+                  <span class="replication-bucket-icon">
+                    <span class="vi" data-icon="Bucket" data-icon-size="30"></span>
+                    <span class="replication-icon-badge">
+                      <span class="vi" data-icon="ShieldCheck" data-icon-size="21"></span>
+                    </span>
+                  </span>
+                  <strong class="mono">{{ bucket.replication_target }}</strong>
+                  <span class="replication-state-pill">
+                    {% if bucket.replication_direction == "bidirectional" %}
+                      Bidirectionnelle
+                    {% else %}
+                      Répliqué
+                    {% endif %}
+                  </span>
+                </div>
+                <p>
+                  <span class="vi" data-icon="CheckCircle" data-icon-size="15"></span>
+                  <span>
+                    {% if bucket.replication_direction == "bidirectional" %}
+                      Synchronisé avec <strong class="mono">{{ bucket.replication_source }}</strong>
+                    {% else %}
+                      Répliqué depuis <strong class="mono">{{ bucket.replication_source }}</strong>
+                    {% endif %}
+                  </span>
+                </p>
+              </div>
+            </div>
+          {% else %}
+            <div class="replication-map replication-map-empty">
+              <div class="replication-bucket source">
+                <span>Bucket</span>
+                <div>
+                  <span class="replication-bucket-icon">
+                    <span class="vi" data-icon="Bucket" data-icon-size="30"></span>
+                  </span>
+                  <strong class="mono">{{ bucket.name }}</strong>
+                </div>
+              </div>
+
+              <div class="replication-bridge">
+                <span class="replication-line" aria-hidden="true"></span>
+                <span class="replication-sync" aria-hidden="true">
+                  <span class="vi" data-icon="Unlink" data-icon-size="22"></span>
+                </span>
+                <span class="replication-caption">
+                  <strong>Replication inactive</strong>
+                  <span>Aucun sens</span>
+                </span>
+              </div>
+
+              <div class="replication-bucket target empty">
+                <span>Replication</span>
+                <div>
+                  <span class="replication-bucket-icon">
+                    <span class="vi" data-icon="Unlink" data-icon-size="24"></span>
+                  </span>
+                  <strong>Aucune replication</strong>
+                  <span class="replication-state-pill muted">Aucune</span>
+                </div>
+              </div>
+            </div>
+          {% endif %}
+
+          {% if bucket.tags %}
+            <div class="bucket-tags">
+              <span>Tags</span>
+              {% for tag in bucket.tags %}
+                <code>{{ tag.key }}={{ tag.value }}</code>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </section>
+
+        <div class="bucket-account-strip">
+          <div>
+            <strong>{{ bucket.iam_policy_versions|length }}</strong>
+            policy version(s) IAM au niveau account touchent ce bucket.
+          </div>
+          <button class="btn btn-indigo btn-sm" type="button" data-policy-modal-open>
+            Voir les policies de l'owner
+          </button>
+        </div>
+
+        <pre id="bucket-json" hidden>{{ bucket.bucket_json }}</pre>
+      </section>
+
+      <div class="modal-backdrop bucket-policy-modal-backdrop" data-policy-modal hidden>
+        <section
+          class="modal bucket-policy-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="policy-modal-title"
+        >
+          <div class="modal-head">
+            <div>
+              <div class="modal-kicker">Account IAM</div>
+              <h3 id="policy-modal-title">{{ bucket.owner }}</h3>
+              <p class="policy-modal-subtitle">
+                Policies IAM de l'account qui touchent
+                <span class="mono">{{ bucket.name }}</span>.
+              </p>
+            </div>
+            <button
+              class="icon-btn"
+              type="button"
+              data-policy-modal-close
+              aria-label="Fermer"
+            >
+              <span class="vi" data-icon="X" data-icon-size="16"></span>
+            </button>
+          </div>
+
+          <div class="modal-body bucket-policy-modal-body">
+            <div class="account-context">
+              <div>
+                <span>Bucket</span>
+                <strong class="mono">{{ bucket.name }}</strong>
+              </div>
+              <div>
+                <span>Ring</span>
+                <strong class="mono">{{ bucket.ring }}</strong>
+              </div>
+              <div>
+                <span>Policies</span>
+                <strong>{{ bucket.iam_policy_versions|length }}</strong>
+              </div>
+              <div>
+                <span>Buckets touchés</span>
+                <strong>{{ bucket.touched_buckets|length }}</strong>
+              </div>
+            </div>
+
+            {% if bucket.touched_buckets %}
+              <div class="bucket-touch-list">
+                <span>Buckets touchés</span>
+                {% for touched_bucket in bucket.touched_buckets %}
+                  <span class="bucket-chip">{{ touched_bucket }}</span>
+                {% endfor %}
+              </div>
+            {% endif %}
+
+            <div class="policy-modal-actions">
+              <button class="btn btn-ghost btn-sm" type="button" data-policies-expand>
+                Tout ouvrir
+              </button>
+              <button class="btn btn-ghost btn-sm" type="button" data-policies-collapse>
+                Tout fermer
+              </button>
+              <button class="btn btn-indigo btn-sm" type="button" data-copy-from="all-policies-json">
+                <span class="vi" data-icon="Link" data-icon-size="15"></span>
+                Copier tous les JSON
+              </button>
+            </div>
+
+            <div class="policy-list">
+              {% for policy in bucket.iam_policy_versions %}
+                <article class="policy-row" data-policy-card>
+                  <header class="policy-head">
+                    <button
+                      class="chevron-btn"
+                      type="button"
+                      aria-label="Afficher le détail de la policy"
+                      aria-expanded="false"
+                      data-policy-toggle
+                    >
+                      <span class="vi" data-icon="ChevronDown" data-icon-size="18"></span>
+                    </button>
+
+                    <div class="policy-title">
+                      <strong>{{ policy.policy_name }}</strong>
+                      <span class="mono">{{ policy.policy_arn }}</span>
+                    </div>
+
+                    <div class="policy-meta">
+                      <span>{{ policy.version_id }}</span>
+                      {% if policy.is_default_version %}
+                        <span class="good">Default</span>
+                      {% endif %}
+                      <span>{{ policy.statements|length }} statement(s)</span>
+                      <span>{{ policy.allowed_actions|length }} action(s)</span>
+                    </div>
+
+                    <button
+                      class="btn btn-ghost btn-sm"
+                      type="button"
+                      data-copy-from="policy-json-{{ forloop.counter }}"
+                    >
+                      Copier JSON
+                    </button>
+                  </header>
+
+                  <div class="policy-body" data-policy-body hidden>
+                    <div class="policy-actions-list">
+                      {% for action in policy.allowed_actions %}
+                        <span class="action-chip">{{ action }}</span>
+                      {% endfor %}
+                    </div>
+
+                    <div class="statement-list">
+                      {% for statement in policy.statements %}
+                        <div class="statement-row">
+                          <div class="statement-name">
+                            <strong>{{ statement.sid|default:"Statement" }}</strong>
+                            <span class="{% if statement.effect == 'Allow' %}good{% else %}warn{% endif %}">
+                              {{ statement.effect }}
+                            </span>
+                          </div>
+
+                          <div class="statement-values">
+                            <div>
+                              <span>Actions</span>
+                              {% for action in statement.actions %}
+                                <code>{{ action }}</code>
+                              {% endfor %}
+                            </div>
+                            <div>
+                              <span>Resources</span>
+                              {% for resource in statement.resources %}
+                                <code>{{ resource }}</code>
+                              {% endfor %}
+                            </div>
+                          </div>
+                        </div>
+                      {% endfor %}
+                    </div>
+
+                    <pre id="policy-json-{{ forloop.counter }}" hidden>{{ policy.json_document }}</pre>
+                  </div>
+                </article>
+              {% endfor %}
+            </div>
+
+            <pre id="all-policies-json" hidden>{{ bucket.policies_json }}</pre>
+          </div>
+        </section>
+      </div>
+    {% else %}
+      <div class="empty scale-in">
+        <div class="ghost-icon">
+          <span class="vi" data-icon="Server" data-icon-size="52" data-icon-stroke="1.5"></span>
+        </div>
+        <h4>Aucun bucket trouvé</h4>
+        <p>Aucune policy IAM correspondant à <strong>{{ bucket_name }}</strong> n'a été trouvée.</p>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{% static 'cloud_toolbox/js/bucket_policies.js' %}?v=3"></script>
+{% endblock %}

@@ -102,4 +102,14 @@ OPENSTACK_VERSIONS = comma_separated_values(
     )
 )
 
+OBJECT_STORAGE_RINGS = comma_separated_values(
+    os.environ.get(
+        "OBJECT_STORAGE_RINGS",
+        (
+            "OBJRNGPARMARTIG01,OBJRNGPARMARTIG02,OBJRNGPARMAR01,"
+            "OBJRNGNORSEC01,OBJRNGNYCPCY01,OBJRNGSINLOW01"
+        ),
+    )
+)
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

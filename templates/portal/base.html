@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="{% static 'cloud_toolbox/css/base.css' %}?v=5">
   <link rel="stylesheet" href="{% static 'cloud_toolbox/css/components.css' %}?v=5">
   <link rel="stylesheet" href="{% static 'cloud_toolbox/css/pages.css' %}?v=7">
+  {% block styles %}{% endblock %}
 </head>
 <body data-static-url="{% get_static_prefix %}">
   <div id="app">
@@ -103,7 +104,7 @@
     </section>
   </div>
 
-  <script src="{% static 'cloud_toolbox/js/icons.js' %}?v=6"></script>
+  <script src="{% static 'cloud_toolbox/js/icons.js' %}?v=7"></script>
   <script src="{% static 'cloud_toolbox/js/common.js' %}?v=1"></script>
   <script src="{% static 'cloud_toolbox/js/accounts.js' %}?v=1"></script>
   {% block scripts %}{% endblock %}

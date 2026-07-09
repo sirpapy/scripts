@@ -1,0 +1,234 @@
+{% extends "portal/base.html" %}
+{% load static %}
+
+{% block title %}Détails Account IAM — Cloud Toolbox{% endblock %}
+
+{% block styles %}
+  <link rel="stylesheet" href="{% static 'cloud_toolbox/css/account_details.css' %}?v=1">
+{% endblock %}
+
+{% block content %}
+  <div class="animate-in duration-500">
+    <div class="crumb fade-in-down">
+      <a href="{% url 'index' %}">Accueil</a>
+      <span style="opacity:.6">/</span>
+      <span>Détails Account IAM</span>
+    </div>
+
+    <div class="page-head fade-in-up">
+      <h2>
+        <span class="vi" data-icon="Server" data-icon-size="26"></span>
+        Détails Account IAM
+      </h2>
+      <p>Affichez les détails d'un account et les policies IAM appliquées à cet account.</p>
+    </div>
+
+    <form
+      class="card card-pad fade-in-up account-details-search"
+      method="get"
+      action="{% url 'account_details' %}"
+      style="animation-delay:.05s;"
+    >
+      <div class="form-grid account-details-form-grid">
+        <div class="field">
+          <label for="account_id">Account ID</label>
+          <input
+            id="account_id"
+            name="account_id"
+            value="{{ account_id }}"
+            placeholder="OBJ_8EBDA5CE_PRD"
+          >
+          <div class="hint">Owner / account Object Storage.</div>
+        </div>
+      </div>
+
+      <div class="toolbar-row">
+        <button class="btn btn-indigo" type="submit">
+          <span class="vi" data-icon="Search" data-icon-size="16"></span>
+          Voir l'account
+        </button>
+
+        <button
+          class="btn btn-ghost btn-sm"
+          type="button"
+          data-account-details-example
+          data-account-id="OBJ_8EBDA5CE_PRD"
+        >
+          Exemple
+        </button>
+      </div>
+    </form>
+
+    {% if not searched %}
+      <div class="empty scale-in">
+        <div class="ghost-icon">
+          <span class="vi" data-icon="Server" data-icon-size="52" data-icon-stroke="1.5"></span>
+        </div>
+        <h4>Aucun account analysé</h4>
+        <p>Saisissez un Account ID pour récupérer les détails et les policies IAM.</p>
+      </div>
+    {% elif account %}
+      <section class="account-panel scale-in">
+        <header class="account-panel-head">
+          <div class="account-title">
+            <span class="account-icon">
+              <span class="vi" data-icon="Server" data-icon-size="22"></span>
+            </span>
+            <div>
+              <div class="account-kicker">Account</div>
+              <h3 class="mono">{{ account.account_id }}</h3>
+            </div>
+          </div>
+
+          <div class="account-actions">
+            <div class="account-badges">
+              <span>{{ account.domain }}</span>
+              <span>{{ account.iam_policy_versions|length }} policies</span>
+              <span>{{ account.touched_buckets|length }} buckets touchés</span>
+            </div>
+
+            <button class="btn btn-ghost btn-sm" type="button" data-copy-from="account-json">
+              Copier JSON account
+            </button>
+          </div>
+        </header>
+
+        <section class="account-section">
+          <h4>Détails account</h4>
+
+          <dl class="account-detail-grid">
+            <div>
+              <dt>Project name</dt>
+              <dd>{{ account.project_name }}</dd>
+            </div>
+            <div>
+              <dt>Domain</dt>
+              <dd>{{ account.domain }}</dd>
+            </div>
+            <div>
+              <dt>Project ID</dt>
+              <dd class="mono">{{ account.project_id }}</dd>
+            </div>
+            <div>
+              <dt>Owner display name</dt>
+              <dd class="mono">{{ account.owner_display_name }}</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="account-section">
+          <div class="policy-section-head">
+            <div>
+              <h4>Policies IAM appliquées</h4>
+              {% if account.touched_buckets %}
+                <div class="account-touch-list">
+                  <span>Buckets touchés</span>
+                  {% for touched_bucket in account.touched_buckets %}
+                    <span class="account-chip">{{ touched_bucket }}</span>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </div>
+
+            <div class="policy-actions">
+              <button class="btn btn-ghost btn-sm" type="button" data-policies-expand>
+                Tout ouvrir
+              </button>
+              <button class="btn btn-ghost btn-sm" type="button" data-policies-collapse>
+                Tout fermer
+              </button>
+              <button class="btn btn-indigo btn-sm" type="button" data-copy-from="account-policies-json">
+                Copier les JSON
+              </button>
+            </div>
+          </div>
+
+          <div class="policy-list">
+            {% for policy in account.iam_policy_versions %}
+              <article class="policy-row" data-policy-card>
+                <header class="policy-head">
+                  <button
+                    class="chevron-btn"
+                    type="button"
+                    aria-label="Afficher le détail de la policy"
+                    aria-expanded="false"
+                    data-policy-toggle
+                  >
+                    <span class="vi" data-icon="ChevronDown" data-icon-size="18"></span>
+                  </button>
+
+                  <div class="policy-title">
+                    <strong>{{ policy.policy_name }}</strong>
+                    <span class="mono">{{ policy.policy_arn }}</span>
+                  </div>
+
+                  <div class="policy-meta">
+                    <span>{{ policy.version_id }}</span>
+                    {% if policy.is_default_version %}
+                      <span class="good">Default</span>
+                    {% endif %}
+                    <span>{{ policy.statements|length }} statement(s)</span>
+                    <span>{{ policy.allowed_actions|length }} action(s)</span>
+                  </div>
+
+                  <button
+                    class="btn btn-ghost btn-sm"
+                    type="button"
+                    data-copy-from="account-policy-json-{{ forloop.counter }}"
+                  >
+                    Copier JSON
+                  </button>
+                </header>
+
+                <div class="policy-body" data-policy-body hidden>
+                  <div class="policy-actions-list">
+                    {% for action in policy.allowed_actions %}
+                      <span class="action-chip">{{ action }}</span>
+                    {% endfor %}
+                  </div>
+
+                  <div class="statement-list">
+                    {% for statement in policy.statements %}
+                      <div class="statement-row">
+                        <div class="statement-name">
+                          <strong>{{ statement.sid|default:"Statement" }}</strong>
+                          <span class="{% if statement.effect == 'Allow' %}good{% else %}warn{% endif %}">
+                            {{ statement.effect }}
+                          </span>
+                        </div>
+
+                        <div class="statement-values">
+                          <div>
+                            <span>Actions</span>
+                            {% for action in statement.actions %}
+                              <code>{{ action }}</code>
+                            {% endfor %}
+                          </div>
+                          <div>
+                            <span>Resources</span>
+                            {% for resource in statement.resources %}
+                              <code>{{ resource }}</code>
+                            {% endfor %}
+                          </div>
+                        </div>
+                      </div>
+                    {% endfor %}
+                  </div>
+
+                  <pre id="account-policy-json-{{ forloop.counter }}" hidden>{{ policy.json_document }}</pre>
+                </div>
+              </article>
+            {% endfor %}
+          </div>
+        </section>
+
+        <pre id="account-json" hidden>{{ account.account_json }}</pre>
+        <pre id="account-policies-json" hidden>{{ account.policies_json }}</pre>
+      </section>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{% static 'cloud_toolbox/js/account_details.js' %}?v=1"></script>
+{% endblock %}

@@ -40,6 +40,36 @@ BLOCK_STORAGE_TOOLS = [
 ]
 
 
+OBJECT_STORAGE_TOOLS = [
+    {
+        "id": "bucket-policies",
+        "route_name": "bucket_policies",
+        "title": "Bucket IAM Policies",
+        "category": "Object Storage",
+        "icon_name": "Server",
+        "description": (
+            "Retrouvez les policies IAM qui touchent un bucket et inspectez "
+            "leurs statements."
+        ),
+    },
+]
+
+
+COMMON_TOOLS = [
+    {
+        "id": "account-details",
+        "route_name": "account_details",
+        "title": "Détails Account IAM",
+        "category": "Identité",
+        "icon_name": "Server",
+        "description": (
+            "Affichez les détails d'un account et les policies IAM "
+            "qui lui sont appliquées."
+        ),
+    },
+]
+
+
 TOOL_GROUPS = [
     {
         "id": "block-storage-tools",
@@ -51,12 +81,12 @@ TOOL_GROUPS = [
         "id": "object-storage-tools",
         "title": "Object Storage Tools",
         "description": "Outils Swift et stockage objet.",
-        "tools": [],
+        "tools": OBJECT_STORAGE_TOOLS,
     },
     {
         "id": "common-tools",
         "title": "Common Tools",
         "description": "Outils transverses partagés entre plusieurs plateformes.",
-        "tools": [],
+        "tools": COMMON_TOOLS,
     },
 ]

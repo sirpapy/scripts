@@ -20,11 +20,13 @@ from portal.quota_forms import (
     quota_decision_form_data,
     quota_retrieve_form_data,
 )
-from portal.services import accounts, cinder, quotas, wwn
+from portal.services import accounts, cinder, object_storage, quotas, wwn
 from portal.tool_catalog import TOOL_GROUPS
 from portal.view_helpers import (
+    object_storage_rings,
     openstack_regions,
     openstack_versions_config,
+    selected_object_storage_ring,
     selected_openstack_version,
     selected_region,
     session_set,
@@ -111,6 +113,60 @@ def account_lookup(request):
         {
             "project_id": project_id,
             "account": account_details,
+            "searched": searched,
+        },
+    )
+
+
+@login_required
+def account_details(request):
+    account_id = request.GET.get("account_id", "").strip()
+    account = None
+    searched = "account_id" in request.GET
+
+    if account_id:
+        try:
+            account = accounts.build_account_report(account_id)
+        except ValueError:
+            messages.error(request, "Account ID invalide.")
+    elif searched:
+        messages.error(request, "Saisissez un Account ID.")
+
+    return render(
+        request,
+        "portal/account_details.html",
+        {
+            "account_id": account_id,
+            "account": account,
+            "searched": searched,
+        },
+    )
+
+
+@login_required
+def bucket_policies(request):
+    rings = object_storage_rings()
+    ring = selected_object_storage_ring(request.GET.get("ring"), rings)
+    bucket_name = request.GET.get("bucket_name", "").strip()
+    searched = "bucket_name" in request.GET
+    bucket = None
+
+    if bucket_name:
+        try:
+            bucket = object_storage.get_bucket_policy_report(bucket_name, ring)
+        except ValueError:
+            messages.error(request, "Bucket name invalide.")
+    elif searched:
+        messages.error(request, "Saisissez un bucket name.")
+
+    return render(
+        request,
+        "portal/bucket_policies.html",
+        {
+            "rings": rings,
+            "ring": ring,
+            "bucket_name": bucket_name,
+            "bucket": bucket,
             "searched": searched,
         },
     )

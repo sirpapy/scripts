@@ -23,12 +23,20 @@ Familles d'outils du dashboard :
 - `Object Storage Tools`
 - `Common Tools`
 
-Tous les outils existants sont actuellement dans `Block Storage Tools` :
+Outils existants dans `Block Storage Tools` :
 
 - `Gestionnaire de Volumes`
 - `Gestionnaire de Quotas`
 - `Recherche Account`
 - `Recherche WWN`
+
+Outils existants dans `Object Storage Tools` :
+
+- `Bucket IAM Policies`
+
+Outils existants dans `Common Tools` :
+
+- `Détails Account IAM`
 
 Routes principales :
 
@@ -39,6 +47,8 @@ Routes principales :
 /tools/volumes/         Recherche et actions volumes
 /tools/quotas/          Recherche et application quotas
 /tools/accounts/        Recherche account par Project ID
+/tools/account-details/ Détails account et policies IAM appliquées
+/tools/bucket-policies/ Recherche policies IAM par bucket Object Storage
 /tools/wwn/             Recherche volumes par WWN
 /api/accounts/<uuid>/   API account mockée, utilisée par la popup
 ```
@@ -91,6 +101,7 @@ Les variables d'environnement sont lues dans `cloud_toolbox/settings.py`.
 ```text
 OPENSTACK_REGIONS          ex: us-east-1,us-west-2,eu-west-1
 OPENSTACK_VERSIONS         ex: v1,v2
+OBJECT_STORAGE_RINGS       ex: OBJRNGPARMARTIG01,OBJRNGPARMAR01
 LDAP_DOMAIN                ex: INTERNAL
 LDAP_AUTHORIZED_GROUPS     ex: cloud-toolbox-users,cloud-toolbox-admins
 ```
@@ -100,6 +111,7 @@ Exemple PowerShell :
 ```powershell
 $env:OPENSTACK_REGIONS="us-east-1,us-west-2"
 $env:OPENSTACK_VERSIONS="v1,v2"
+$env:OBJECT_STORAGE_RINGS="OBJRNGPARMARTIG01,OBJRNGPARMAR01"
 $env:LDAP_DOMAIN="INTERNAL"
 $env:LDAP_AUTHORIZED_GROUPS="cloud-toolbox-users,cloud-toolbox-admins"
 ```
@@ -137,6 +149,7 @@ portal/
     accounts.py
     cinder.py
     ldap_auth.py
+    object_storage.py
     quotas.py
     wwn.py
   templatetags/
@@ -150,6 +163,8 @@ templates/
     volumes.html
     quotas.html
     accounts.html
+    account_details.html
+    bucket_policies.html
     wwn_lookup.html
     partials/
       status_badge.html
@@ -161,8 +176,12 @@ static/
       base.css
       components.css
       pages.css
+      account_details.css
+      bucket_policies.css
     js/
       accounts.js
+      account_details.js
+      bucket_policies.js
       common.js
       icons.js
       quotas.js
@@ -187,9 +206,12 @@ Responsabilités :
 - `static/cloud_toolbox/js/icons.js` : charge les SVG depuis le dossier `icons`.
 - `static/cloud_toolbox/js/common.js` : comportements communs simples.
 - `static/cloud_toolbox/js/accounts.js` : popup et API account.
+- `static/cloud_toolbox/js/account_details.js` : exemple, dépliage et copie JSON
+  des policies IAM d'un account.
+- `static/cloud_toolbox/js/bucket_policies.js` : exemple, dépliage et copie JSON
+  des policies IAM.
 - `static/cloud_toolbox/js/volumes.js` : filtres, détails et actions volumes.
 - `static/cloud_toolbox/js/quotas.js` : comportements du formulaire quotas.
-- `static/cloud_toolbox/js/icons.js` : icônes inline.
 
 ---
 
@@ -320,12 +342,17 @@ Fichiers :
 ```text
 portal/services/accounts.py
 templates/portal/accounts.html
+templates/portal/account_details.html
+static/cloud_toolbox/css/account_details.css
+static/cloud_toolbox/js/account_details.js
 ```
 
 Fonctionnement :
 
-- Validation UUID.
-- Retourne uniquement :
+- `/tools/accounts/` valide un Project ID en UUID.
+- `/tools/account-details/` valide un Account ID / owner et retourne un rapport
+  account avec policies IAM mockées.
+- Le lookup Project ID retourne uniquement :
 
 ```python
 {
@@ -340,6 +367,39 @@ La même logique est utilisée par :
 ```text
 GET /api/accounts/<project_id>/
 ```
+
+Le rapport `Détails Account IAM` retourne :
+
+```text
+account_id
+project_name
+domain
+project_id
+owner_display_name
+iam_policy_versions
+```
+
+Les policies IAM utilisent les mêmes objets que l'outil bucket :
+`IamPolicyVersion` et `IamPolicyStatement`.
+
+### Bucket IAM Policies
+
+Fichiers :
+
+```text
+portal/services/object_storage.py
+templates/portal/bucket_policies.html
+static/cloud_toolbox/css/bucket_policies.css
+static/cloud_toolbox/js/bucket_policies.js
+```
+
+Fonctionnement :
+
+- Recherche par `ring` et `bucket_name`.
+- Le backend retourne un rapport mocké avec les versions de policies IAM.
+- Chaque policy expose `allowed_actions` et `touched_buckets`.
+- Les statements affichent `Effect`, `Action` et `Resource`.
+- Le JS de page gère seulement exemple, dépliage/repliage et copie JSON.
 
 ### WWN
 
@@ -458,6 +518,44 @@ Garder le contrat de sortie :
     "domain": "...",
     "project_id": "...",
 }
+```
+
+### Object Storage
+
+Dans `portal/services/object_storage.py`, remplacer :
+
+- `get_bucket_policy_report(...)`;
+- `build_policy_versions(...)`;
+- `build_read_policy(...)`;
+- `build_replication_policy(...)`;
+- toute génération déterministe (`seed_for`, `stable_uuid`, `random`).
+
+Le contrat utile pour le template est :
+
+```text
+BucketDetails
+  ring
+  name
+  owner
+  owner_display_name
+  creation_date
+  location_constraint
+  replication_direction  # none, outbound, inbound, bidirectional
+  replication_destination
+  replication_peer
+  replication_source
+  replication_target
+  iam_policy_versions
+
+IamPolicyVersion
+  policy_name
+  policy_arn
+  version_id
+  is_default_version
+  create_date
+  allowed_actions
+  touched_buckets
+  statements
 ```
 
 ### WWN

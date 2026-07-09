@@ -15,6 +15,8 @@ urlpatterns = [
     path("tools/volumes/", views.volumes, name="volumes"),
     path("tools/quotas/", views.quota_manager, name="quotas"),
     path("tools/accounts/", views.account_lookup, name="accounts"),
+    path("tools/account-details/", views.account_details, name="account_details"),
+    path("tools/bucket-policies/", views.bucket_policies, name="bucket_policies"),
     path("tools/wwn/", views.wwn_lookup, name="wwn_lookup"),
     path(
         "api/accounts/<str:project_id>/",
