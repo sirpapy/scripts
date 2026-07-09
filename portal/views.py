@@ -148,12 +148,26 @@ def bucket_policies(request):
     rings = object_storage_rings()
     ring = selected_object_storage_ring(request.GET.get("ring"), rings)
     bucket_name = request.GET.get("bucket_name", "").strip()
+    raw_candidates = []
+    bucket_candidates = []
+    bucket_candidate_rows = []
     searched = "bucket_name" in request.GET
-    bucket = None
 
     if bucket_name:
         try:
-            bucket = object_storage.get_bucket_policy_report(bucket_name, ring)
+            raw_candidates = object_storage.get_bucket_details(bucket_name, ring)
+            bucket_candidates = [
+                object_storage.build_bucket_details(candidate)
+                for candidate in raw_candidates
+            ]
+            bucket_candidate_rows = [
+                (
+                    bucket,
+                    object_storage.bucket_candidate_json(candidate),
+                    object_storage.policy_versions_json(bucket.iam_policy_versions),
+                )
+                for bucket, candidate in zip(bucket_candidates, raw_candidates)
+            ]
         except ValueError:
             messages.error(request, "Bucket name invalide.")
     elif searched:
@@ -166,7 +180,9 @@ def bucket_policies(request):
             "rings": rings,
             "ring": ring,
             "bucket_name": bucket_name,
-            "bucket": bucket,
+            "bucket_candidates": bucket_candidates,
+            "bucket_candidates_raw": raw_candidates,
+            "bucket_candidate_rows": bucket_candidate_rows,
             "searched": searched,
         },
     )

@@ -4,7 +4,7 @@
 {% block title %}Bucket IAM Policies — Cloud Toolbox{% endblock %}
 
 {% block styles %}
-  <link rel="stylesheet" href="{% static 'cloud_toolbox/css/bucket_policies.css' %}?v=7">
+  <link rel="stylesheet" href="{% static 'cloud_toolbox/css/bucket_policies.css' %}?v=9">
 {% endblock %}
 
 {% block content %}
@@ -80,16 +80,32 @@
         <h4>Aucun bucket analysé</h4>
         <p>Saisissez un bucket name pour récupérer les policies IAM côté backend.</p>
       </div>
-    {% elif bucket %}
+    {% elif bucket_candidate_rows %}
       <div class="bucket-result-head">
         <div>
-          Bucket trouvé pour
-          <strong class="mono">{{ bucket.name }}</strong>
+          <strong>{{ bucket_candidate_rows|length }}</strong>
+          bucket(s) trouvé(s) pour
+          <strong class="mono">{{ bucket_name }}</strong>
           sur
-          <strong class="mono">{{ bucket.ring }}</strong>
+          <strong class="mono">{{ ring }}</strong>
+        </div>
+        <div class="bucket-result-actions">
+          <button class="bucket-bulk-action" type="button" data-buckets-expand>
+            <span class="vi" data-icon="ChevronDown" data-icon-size="15"></span>
+            Déplier tout
+          </button>
+          <button class="bucket-bulk-action" type="button" data-buckets-collapse>
+            <span class="bucket-bulk-action-up">
+              <span class="vi" data-icon="ChevronDown" data-icon-size="15"></span>
+            </span>
+            Replier tout
+          </button>
         </div>
       </div>
 
+      <div class="bucket-result-list" data-bucket-list>
+      {% for bucket, bucket_raw_json, bucket_policies_json in bucket_candidate_rows %}
+      {% with bucket_index=forloop.counter %}
       <section class="bucket-panel scale-in">
         <header class="bucket-panel-head">
           <div class="bucket-title">
@@ -113,7 +129,7 @@
               {% if bucket.object_lock_enabled %}
                 <span class="bucket-pill good">Object Lock</span>
               {% endif %}
-              {% if bucket.versioning_enabled %}
+              {% if bucket.versioning_configuration %}
                 <span class="bucket-pill good">Versioning</span>
               {% endif %}
               {% if bucket.replication_destination %}
@@ -121,12 +137,27 @@
               {% endif %}
             </div>
 
-            <button class="btn btn-ghost btn-sm" type="button" data-copy-from="bucket-json">
+            <div class="bucket-panel-buttons">
+              <button
+                class="bucket-toggle"
+                type="button"
+                data-bucket-toggle
+                data-open-label="Déplier {{ bucket.name }}"
+                data-close-label="Replier {{ bucket.name }}"
+                aria-label="Déplier {{ bucket.name }}"
+                aria-expanded="false"
+                aria-controls="bucket-body-{{ bucket_index }}"
+              >
+                <span class="vi" data-icon="ChevronDown" data-icon-size="18"></span>
+              </button>
+              <button class="btn btn-ghost btn-sm" type="button" data-copy-from="bucket-json-{{ bucket_index }}">
               Copier JSON bucket
-            </button>
+              </button>
+            </div>
           </div>
         </header>
 
+        <div id="bucket-body-{{ bucket_index }}" class="bucket-panel-body" data-bucket-body hidden>
         <section class="bucket-section">
           <h4>Identité & localisation</h4>
 
@@ -138,7 +169,11 @@
             <div class="owner-fact">
               <dt>Owner</dt>
               <dd>
-                <button class="owner-button mono" type="button" data-policy-modal-open>
+                <button
+                  class="owner-button mono"
+                  type="button"
+                  data-policy-modal-open="bucket-policy-modal-{{ bucket_index }}"
+                >
                   {{ bucket.owner }}
                 </button>
               </dd>
@@ -157,7 +192,7 @@
             </div>
             <div>
               <dt>Modèle metadata</dt>
-              <dd>v{{ bucket.model_version }}</dd>
+              <dd>v{{ bucket.md_bucket_model_version }}</dd>
             </div>
           </dl>
         </section>
@@ -176,7 +211,7 @@
             </div>
             <div>
               <span>Versioning</span>
-              {% if bucket.versioning_enabled %}
+              {% if bucket.versioning_configuration %}
                 <strong class="state-pill good">Enabled</strong>
               {% else %}
                 <strong class="state-pill muted">Disabled</strong>
@@ -184,7 +219,7 @@
             </div>
             <div>
               <span>Bucket policy</span>
-              {% if bucket.bucket_policy_present %}
+              {% if bucket.bucket_policy %}
                 <strong class="state-pill warn">Présente</strong>
               {% else %}
                 <strong class="state-pill muted">Absente</strong>
@@ -192,7 +227,7 @@
             </div>
             <div>
               <span>Chiffrement serveur</span>
-              {% if bucket.server_side_encryption_present %}
+              {% if bucket.server_side_encryption %}
                 <strong class="state-pill good">Présent</strong>
               {% else %}
                 <strong class="state-pill muted">Absent</strong>
@@ -204,11 +239,11 @@
             <dl class="bucket-detail-grid compact">
               <div>
                 <dt>Mode de rétention</dt>
-                <dd>{{ bucket.object_lock_mode }}</dd>
+                <dd>{{ bucket.object_lock_configuration.mode }}</dd>
               </div>
               <div>
                 <dt>Durée par défaut</dt>
-                <dd>{{ bucket.object_lock_retention_days }} jour(s)</dd>
+                <dd>{{ bucket.object_lock_configuration.retentionDays }} jour(s)</dd>
               </div>
             </dl>
           {% endif %}
@@ -220,7 +255,7 @@
           <div class="bucket-status-list">
             <div>
               <span>Lifecycle</span>
-              {% if bucket.lifecycle_present %}
+              {% if bucket.lifecycle_configuration %}
                 <strong class="state-pill good">Configuré</strong>
               {% else %}
                 <strong class="state-pill muted">Absent</strong>
@@ -228,7 +263,7 @@
             </div>
             <div>
               <span>Replication</span>
-              {% if bucket.replication_enabled %}
+              {% if bucket.replication_configuration %}
                 <strong class="state-pill good">Configurée</strong>
               {% else %}
                 <strong class="state-pill muted">Absente</strong>
@@ -236,7 +271,7 @@
             </div>
             <div>
               <span>CORS</span>
-              {% if bucket.cors_present %}
+              {% if bucket.cors %}
                 <strong class="state-pill warn">Présent</strong>
               {% else %}
                 <strong class="state-pill muted">Absent</strong>
@@ -244,7 +279,7 @@
             </div>
             <div>
               <span>Notifications</span>
-              {% if bucket.notification_present %}
+              {% if bucket.notification_configuration %}
                 <strong class="state-pill warn">Présentes</strong>
               {% else %}
                 <strong class="state-pill muted">Absentes</strong>
@@ -252,14 +287,14 @@
             </div>
           </div>
 
-          {% if bucket.replication_enabled %}
+          {% if bucket.replication_configuration %}
             <div
-              class="replication-map replication-map-{{ bucket.replication_direction }}"
-              aria-label="{% if bucket.replication_direction == 'bidirectional' %}Réplication dans les deux sens{% else %}Réplication source vers cible{% endif %}"
+              class="replication-map replication-map-{{ bucket.replication_configuration.direction }}"
+              aria-label="{% if bucket.replication_configuration.direction == 'bidirectional' %}Réplication dans les deux sens{% else %}Réplication source vers cible{% endif %}"
             >
               <div class="replication-bucket source">
                 <span>
-                  {% if bucket.replication_direction == "bidirectional" %}
+                  {% if bucket.replication_configuration.direction == "bidirectional" %}
                     Bucket actuel
                   {% else %}
                     Bucket source
@@ -269,7 +304,7 @@
                   <span class="replication-bucket-icon">
                     <span class="vi" data-icon="Bucket" data-icon-size="30"></span>
                   </span>
-                  <strong class="mono">{{ bucket.replication_source }}</strong>
+                  <strong class="mono">{{ bucket.replication_configuration.source_bucket }}</strong>
                 </div>
               </div>
 
@@ -279,7 +314,7 @@
                   <span class="vi" data-icon="RefreshCw" data-icon-size="25"></span>
                 </span>
                 <span class="replication-caption">
-                  {% if bucket.replication_direction == "bidirectional" %}
+                  {% if bucket.replication_configuration.direction == "bidirectional" %}
                     <strong>Replication active</strong>
                     <span>Deux sens</span>
                   {% else %}
@@ -291,9 +326,9 @@
 
               <div class="replication-bucket target">
                 <span>
-                  {% if bucket.replication_direction == "bidirectional" %}
+                  {% if bucket.replication_configuration.direction == "bidirectional" %}
                     Bucket pair
-                  {% elif bucket.replication_direction == "inbound" %}
+                  {% elif bucket.replication_configuration.direction == "inbound" %}
                     Bucket actuel répliqué
                   {% else %}
                     Bucket cible répliqué
@@ -306,9 +341,9 @@
                       <span class="vi" data-icon="ShieldCheck" data-icon-size="21"></span>
                     </span>
                   </span>
-                  <strong class="mono">{{ bucket.replication_target }}</strong>
+                  <strong class="mono">{{ bucket.replication_destination_bucket }}</strong>
                   <span class="replication-state-pill">
-                    {% if bucket.replication_direction == "bidirectional" %}
+                    {% if bucket.replication_configuration.direction == "bidirectional" %}
                       Bidirectionnelle
                     {% else %}
                       Répliqué
@@ -318,10 +353,10 @@
                 <p>
                   <span class="vi" data-icon="CheckCircle" data-icon-size="15"></span>
                   <span>
-                    {% if bucket.replication_direction == "bidirectional" %}
-                      Synchronisé avec <strong class="mono">{{ bucket.replication_source }}</strong>
+                    {% if bucket.replication_configuration.direction == "bidirectional" %}
+                      Synchronisé avec <strong class="mono">{{ bucket.replication_configuration.source_bucket }}</strong>
                     {% else %}
-                      Répliqué depuis <strong class="mono">{{ bucket.replication_source }}</strong>
+                      Répliqué depuis <strong class="mono">{{ bucket.replication_configuration.source_bucket }}</strong>
                     {% endif %}
                   </span>
                 </p>
@@ -378,25 +413,35 @@
             <strong>{{ bucket.iam_policy_versions|length }}</strong>
             policy version(s) IAM au niveau account touchent ce bucket.
           </div>
-          <button class="btn btn-indigo btn-sm" type="button" data-policy-modal-open>
+          <button
+            class="btn btn-indigo btn-sm"
+            type="button"
+            data-policy-modal-open="bucket-policy-modal-{{ bucket_index }}"
+          >
             Voir les policies de l'owner
           </button>
         </div>
 
-        <pre id="bucket-json" hidden>{{ bucket.bucket_json }}</pre>
+        <pre id="bucket-json-{{ bucket_index }}" hidden>{{ bucket_raw_json }}</pre>
+        </div>
       </section>
 
-      <div class="modal-backdrop bucket-policy-modal-backdrop" data-policy-modal hidden>
+      <div
+        id="bucket-policy-modal-{{ bucket_index }}"
+        class="modal-backdrop bucket-policy-modal-backdrop"
+        data-policy-modal
+        hidden
+      >
         <section
           class="modal bucket-policy-modal"
           role="dialog"
           aria-modal="true"
-          aria-labelledby="policy-modal-title"
+          aria-labelledby="policy-modal-title-{{ bucket_index }}"
         >
           <div class="modal-head">
             <div>
               <div class="modal-kicker">Account IAM</div>
-              <h3 id="policy-modal-title">{{ bucket.owner }}</h3>
+              <h3 id="policy-modal-title-{{ bucket_index }}">{{ bucket.owner }}</h3>
               <p class="policy-modal-subtitle">
                 Policies IAM de l'account qui touchent
                 <span class="mono">{{ bucket.name }}</span>.
@@ -412,7 +457,7 @@
             </button>
           </div>
 
-          <div class="modal-body bucket-policy-modal-body">
+          <div class="modal-body bucket-policy-modal-body" data-policy-scope>
             <div class="account-context">
               <div>
                 <span>Bucket</span>
@@ -448,7 +493,7 @@
               <button class="btn btn-ghost btn-sm" type="button" data-policies-collapse>
                 Tout fermer
               </button>
-              <button class="btn btn-indigo btn-sm" type="button" data-copy-from="all-policies-json">
+              <button class="btn btn-indigo btn-sm" type="button" data-copy-from="all-policies-json-{{ bucket_index }}">
                 <span class="vi" data-icon="Link" data-icon-size="15"></span>
                 Copier tous les JSON
               </button>
@@ -485,7 +530,7 @@
                     <button
                       class="btn btn-ghost btn-sm"
                       type="button"
-                      data-copy-from="policy-json-{{ forloop.counter }}"
+                      data-copy-from="policy-json-{{ bucket_index }}-{{ forloop.counter }}"
                     >
                       Copier JSON
                     </button>
@@ -526,15 +571,18 @@
                       {% endfor %}
                     </div>
 
-                    <pre id="policy-json-{{ forloop.counter }}" hidden>{{ policy.json_document }}</pre>
+                    <pre id="policy-json-{{ bucket_index }}-{{ forloop.counter }}" hidden>{{ policy.json_document }}</pre>
                   </div>
                 </article>
               {% endfor %}
             </div>
 
-            <pre id="all-policies-json" hidden>{{ bucket.policies_json }}</pre>
+            <pre id="all-policies-json-{{ bucket_index }}" hidden>{{ bucket_policies_json }}</pre>
           </div>
         </section>
+      </div>
+      {% endwith %}
+      {% endfor %}
       </div>
     {% else %}
       <div class="empty scale-in">
@@ -549,5 +597,5 @@
 {% endblock %}
 
 {% block scripts %}
-  <script src="{% static 'cloud_toolbox/js/bucket_policies.js' %}?v=3"></script>
+  <script src="{% static 'cloud_toolbox/js/bucket_policies.js' %}?v=6"></script>
 {% endblock %}

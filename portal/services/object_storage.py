@@ -4,6 +4,7 @@ import hashlib
 import json
 import random
 import re
+from typing import Any
 
 
 BUCKET_NAME_PATTERN = re.compile(r"^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$")
@@ -13,8 +14,34 @@ REPLICATION_NONE = "none"
 REPLICATION_OUTBOUND = "outbound"
 
 
-def default_principals() -> list[str]:
-    return ["*"]
+@dataclass
+class RingEndpoint:
+    url: str
+    name: str
+    region: str
+    offer: str
+    ring: str
+    endpoint: str
+
+
+@dataclass
+class BucketAcl:
+    canned: str
+    full_control: list[str] = field(default_factory=list)
+    read: list[str] = field(default_factory=list)
+    read_acp: list[str] = field(default_factory=list)
+    write: list[str] = field(default_factory=list)
+    write_acp: list[str] = field(default_factory=list)
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "canned": self.canned,
+            "full_control": self.full_control,
+            "read": self.read,
+            "read_acp": self.read_acp,
+            "write": self.write,
+            "write_acp": self.write_acp,
+        }
 
 
 @dataclass(frozen=True)
@@ -29,32 +56,38 @@ class ReplicationDetails:
         return self.direction != REPLICATION_NONE and self.target_bucket is not None
 
 
-@dataclass(frozen=True)
+@dataclass
 class IamPolicyStatement:
     effect: str
     actions: list[str]
     resources: list[str]
-    principals: list[str] = field(default_factory=default_principals)
     sid: str | None = None
 
     @property
     def s3_bucket_names(self) -> list[str]:
-        names: list[str] = []
+        bucket_names: list[str] = []
 
         for resource in self.resources:
-            bucket_name = bucket_name_from_arn(resource)
+            if not resource.startswith("arn:aws:s3:::"):
+                continue
 
-            if bucket_name and bucket_name not in names:
-                names.append(bucket_name)
+            bucket_name = resource.replace(
+                "arn:aws:s3:::",
+                "",
+                1,
+            ).split("/", 1)[0]
 
-        return names
+            if bucket_name and bucket_name not in bucket_names:
+                bucket_names.append(bucket_name)
+
+        return bucket_names
 
     def as_dict(self) -> dict[str, object]:
         statement = {
             "Effect": self.effect,
             "Action": self.actions,
             "Resource": self.resources,
-            "Principal": {"AWS": self.principals},
+            "Principal": {"AWS": ["*"]},
         }
 
         if self.sid:
@@ -63,14 +96,14 @@ class IamPolicyStatement:
         return statement
 
 
-@dataclass(frozen=True)
+@dataclass
 class IamPolicyVersion:
     version_id: str
     is_default_version: bool
     create_date: datetime | None
-    document_version: str
-    policy_arn: str
-    policy_name: str
+    document_version: str | None = None
+    policy_arn: str | None = None
+    policy_name: str | None = None
     statements: list[IamPolicyStatement] = field(default_factory=list)
 
     @property
@@ -122,7 +155,7 @@ class IamPolicyVersion:
         }
 
 
-@dataclass(frozen=True)
+@dataclass
 class BucketDetails:
     ring: str
     name: str
@@ -130,40 +163,23 @@ class BucketDetails:
     owner_display_name: str
     creation_date: datetime | None
     location_constraint: str
+    acl: BucketAcl
     deleted: bool = False
     transient: bool = False
     object_lock_enabled: bool = False
-    model_version: int = 7
-    bucket_policy_present: bool = False
-    cors_present: bool = False
-    lifecycle_present: bool = False
-    server_side_encryption_present: bool = False
-    versioning_enabled: bool = False
-    notification_present: bool = False
-    object_lock_mode: str | None = None
-    object_lock_retention_days: int | None = None
-    replication_direction: str = REPLICATION_NONE
+    md_bucket_model_version: int = 7
+    bucket_policy: Any | None = None
+    cors: Any | None = None
+    lifecycle_configuration: Any | None = None
+    object_lock_configuration: Any | None = None
+    replication_configuration: Any | None = None
     replication_destination: str | None = None
-    replication_peer: str | None = None
-    replication_source: str | None = None
-    replication_target: str | None = None
-    tags: list[dict[str, str]] = field(default_factory=list)
     iam_policy_versions: list[IamPolicyVersion] = field(default_factory=list)
+    server_side_encryption: Any | None = None
+    versioning_configuration: Any | None = None
+    notification_configuration: Any | None = None
+    tags: list[dict[str, str]] = field(default_factory=list)
     uid: str | None = None
-
-    @property
-    def policies_json(self) -> str:
-        return json.dumps(
-            [
-                policy.as_dict()
-                for policy in self.iam_policy_versions
-            ],
-            indent=2,
-        )
-
-    @property
-    def bucket_json(self) -> str:
-        return json.dumps(self.as_dict(), indent=2)
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -173,28 +189,30 @@ class BucketDetails:
             "ownerDisplayName": self.owner_display_name,
             "creationDate": iso_date(self.creation_date),
             "locationConstraint": self.location_constraint,
+            "acl": self.acl.as_dict(),
             "deleted": self.deleted,
             "transient": self.transient,
             "objectLockEnabled": self.object_lock_enabled,
-            "mdBucketModelVersion": self.model_version,
-            "bucketPolicy": self.bucket_policy_present,
-            "cors": self.cors_present,
-            "lifecycleConfiguration": self.lifecycle_present,
-            "objectLockConfiguration": {
-                "mode": self.object_lock_mode,
-                "retentionDays": self.object_lock_retention_days,
-            } if self.object_lock_enabled else None,
-            "replicationDirection": self.replication_direction,
+            "mdBucketModelVersion": self.md_bucket_model_version,
+            "bucketPolicy": self.bucket_policy,
+            "cors": self.cors,
+            "lifecycleConfiguration": self.lifecycle_configuration,
+            "objectLockConfiguration": self.object_lock_configuration,
+            "replicationConfiguration": self.replication_configuration,
             "replicationDestination": self.replication_destination,
-            "replicationPeer": self.replication_peer,
-            "replicationSource": self.replication_source,
-            "replicationTarget": self.replication_target,
-            "serverSideEncryption": self.server_side_encryption_present,
-            "versioningConfiguration": self.versioning_enabled,
-            "notificationConfiguration": self.notification_present,
+            "serverSideEncryption": self.server_side_encryption,
+            "versioningConfiguration": self.versioning_configuration,
+            "notificationConfiguration": self.notification_configuration,
             "tags": self.tags,
             "uid": self.uid,
         }
+
+    @property
+    def replication_destination_bucket(self) -> str | None:
+        if not self.replication_destination:
+            return None
+
+        return self.replication_destination.rsplit(":::", 1)[-1]
 
     @property
     def touched_buckets(self) -> list[str]:
@@ -207,13 +225,39 @@ class BucketDetails:
 
         return names
 
-    @property
-    def replication_enabled(self) -> bool:
-        return self.replication_direction != REPLICATION_NONE
-
 
 def get_bucket_policy_report(bucket_name: str, ring: str) -> BucketDetails:
+    candidates = get_bucket_details(bucket_name, ring)
+    return build_bucket_details(candidates[0])
+
+
+def get_bucket_policy_reports(bucket_name: str, ring: str) -> list[BucketDetails]:
+    return [
+        build_bucket_details(candidate)
+        for candidate in get_bucket_details(bucket_name, ring)
+    ]
+
+
+def get_bucket_details(bucket_name: str, ring: str) -> list[dict[str, Any]]:
     bucket_name = normalize_bucket_name(bucket_name)
+
+    return [
+        build_bucket_candidate(candidate, ring)
+        for candidate in bucket_matches_for(bucket_name)
+    ]
+
+
+def bucket_matches_for(bucket_name: str) -> list[str]:
+    matches = [bucket_name]
+    replication = replication_details_for(bucket_name)
+
+    if replication.peer_bucket and replication.peer_bucket not in matches:
+        matches.append(replication.peer_bucket)
+
+    return matches
+
+
+def build_bucket_candidate(bucket_name: str, ring: str) -> dict[str, Any]:
     randomizer = random.Random(seed_for(bucket_name, ring))
     created_at = datetime.now(timezone.utc) - timedelta(
         days=randomizer.randrange(20, 900)
@@ -222,36 +266,158 @@ def get_bucket_policy_report(bucket_name: str, ring: str) -> BucketDetails:
     replication = replication_details_for(bucket_name)
     object_lock_enabled = randomizer.choice([True, False])
 
-    return BucketDetails(
-        ring=ring,
-        name=bucket_name,
-        owner=bucket_owner(owner_id),
-        owner_display_name=owner_id,
-        creation_date=created_at,
-        location_constraint=randomizer.choice(["dc-1", "dc-2", "eu-1"]),
-        deleted=False,
-        transient=False,
-        object_lock_enabled=object_lock_enabled,
-        bucket_policy_present=False,
-        cors_present=randomizer.choice([False, False, True]),
-        lifecycle_present=randomizer.choice([False, False, True]),
-        server_side_encryption_present=randomizer.choice([False, True]),
-        versioning_enabled=replication.enabled,
-        notification_present=randomizer.choice([False, False, True]),
-        object_lock_mode="Governance" if object_lock_enabled else None,
-        object_lock_retention_days=1 if object_lock_enabled else None,
-        replication_direction=replication.direction,
-        replication_destination=replication.target_bucket,
-        replication_peer=replication.peer_bucket,
-        replication_source=replication.source_bucket,
-        replication_target=replication.target_bucket,
-        tags=[
+    return {
+        "ring": ring,
+        "name": bucket_name,
+        "owner": bucket_owner(owner_id),
+        "owner_display_name": owner_id,
+        "creation_date": created_at,
+        "location_constraint": randomizer.choice(["dc-1", "dc-2", "eu-1"]),
+        "acl": BucketAcl(canned="private"),
+        "deleted": False,
+        "transient": False,
+        "object_lock_enabled": object_lock_enabled,
+        "md_bucket_model_version": 7,
+        "bucket_policy": None,
+        "cors": example_config(randomizer, {"rules": []}),
+        "lifecycle_configuration": example_config(randomizer, {"rules": []}),
+        "object_lock_configuration": object_lock_config(object_lock_enabled),
+        "replication_configuration": replication_config(replication),
+        "replication_destination": replication_destination(replication),
+        "iam_policy_versions": build_policy_versions(bucket_name, replication, created_at),
+        "server_side_encryption": example_config(randomizer, {"algorithm": "AES256"}),
+        "versioning_configuration": {"status": "Enabled"} if replication.enabled else None,
+        "notification_configuration": example_config(randomizer, {"events": []}),
+        "tags": [
             {"key": "owner", "value": bucket_owner(owner_id)},
             {"key": "ring", "value": ring},
         ],
-        iam_policy_versions=build_policy_versions(bucket_name, replication, created_at),
-        uid=stable_uuid(bucket_name, ring, "bucket"),
+        "uid": stable_uuid(bucket_name, ring, "bucket"),
+    }
+
+
+def build_bucket_details(candidate: dict[str, Any]) -> BucketDetails:
+    return BucketDetails(
+        ring=candidate["ring"],
+        name=candidate["name"],
+        owner=candidate["owner"],
+        owner_display_name=candidate["owner_display_name"],
+        creation_date=candidate["creation_date"],
+        location_constraint=candidate["location_constraint"],
+        acl=build_bucket_acl(candidate["acl"]),
+        deleted=candidate.get("deleted", False),
+        transient=candidate.get("transient", False),
+        object_lock_enabled=candidate.get("object_lock_enabled", False),
+        md_bucket_model_version=candidate.get("md_bucket_model_version", 7),
+        bucket_policy=candidate.get("bucket_policy"),
+        cors=candidate.get("cors"),
+        lifecycle_configuration=candidate.get("lifecycle_configuration"),
+        object_lock_configuration=candidate.get("object_lock_configuration"),
+        replication_configuration=candidate.get("replication_configuration"),
+        replication_destination=candidate.get("replication_destination"),
+        iam_policy_versions=candidate.get("iam_policy_versions", []),
+        server_side_encryption=candidate.get("server_side_encryption"),
+        versioning_configuration=candidate.get("versioning_configuration"),
+        notification_configuration=candidate.get("notification_configuration"),
+        tags=candidate.get("tags", []),
+        uid=candidate.get("uid"),
     )
+
+
+def build_bucket_acl(value: BucketAcl | dict[str, Any]) -> BucketAcl:
+    if isinstance(value, BucketAcl):
+        return value
+
+    return BucketAcl(
+        canned=value.get("canned", ""),
+        full_control=value.get("full_control", []),
+        read=value.get("read", []),
+        read_acp=value.get("read_acp", []),
+        write=value.get("write", []),
+        write_acp=value.get("write_acp", []),
+    )
+
+
+def bucket_candidate_json(candidate: dict[str, Any]) -> str:
+    return json.dumps(json_value(candidate), indent=2)
+
+
+def policy_versions_json(policies: list[IamPolicyVersion]) -> str:
+    return json.dumps(
+        [
+            policy.as_dict()
+            for policy in policies
+        ],
+        indent=2,
+    )
+
+
+def json_value(value: Any) -> Any:
+    if isinstance(value, datetime):
+        return iso_date(value)
+
+    if isinstance(value, BucketAcl):
+        return value.as_dict()
+
+    if isinstance(value, IamPolicyVersion):
+        return value.as_dict()
+
+    if isinstance(value, IamPolicyStatement):
+        return value.as_dict()
+
+    if isinstance(value, dict):
+        return {
+            key: json_value(item)
+            for key, item in value.items()
+        }
+
+    if isinstance(value, list):
+        return [
+            json_value(item)
+            for item in value
+        ]
+
+    return value
+
+
+def example_config(randomizer: random.Random, value: dict[str, object]) -> dict[str, object] | None:
+    if randomizer.choice([False, False, True]):
+        return value
+
+    return None
+
+
+def object_lock_config(enabled: bool) -> dict[str, object] | None:
+    if not enabled:
+        return None
+
+    return {
+        "mode": "Governance",
+        "retentionDays": 1,
+    }
+
+
+def replication_config(replication: ReplicationDetails) -> dict[str, str] | None:
+    if not replication.enabled:
+        return None
+
+    config = {
+        "direction": replication.direction,
+        "source_bucket": replication.source_bucket,
+        "target_bucket": replication.target_bucket or "",
+    }
+
+    if replication.peer_bucket:
+        config["peer_bucket"] = replication.peer_bucket
+
+    return config
+
+
+def replication_destination(replication: ReplicationDetails) -> str | None:
+    if not replication.target_bucket:
+        return None
+
+    return bucket_arn(replication.target_bucket)
 
 
 def normalize_bucket_name(value: str) -> str:

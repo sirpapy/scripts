@@ -130,8 +130,8 @@ class BucketPolicyServiceTests(SimpleTestCase):
         ]
 
         self.assertEqual(bucket.name, "crr-source-test")
-        self.assertEqual(bucket.replication_destination, "crr-target-test")
-        self.assertEqual(bucket.replication_direction, "outbound")
+        self.assertEqual(bucket.replication_destination_bucket, "crr-target-test")
+        self.assertEqual(bucket.replication_configuration["direction"], "outbound")
         self.assertIn("s3:GetObjectVersion", actions)
         self.assertIn("s3:ReplicateObject", actions)
         self.assertIn("crr-source-test", bucket.touched_buckets)
@@ -143,9 +143,9 @@ class BucketPolicyServiceTests(SimpleTestCase):
             "OBJRNGPARMARTIG01",
         )
 
-        self.assertEqual(bucket.replication_direction, "inbound")
-        self.assertEqual(bucket.replication_source, "crr-source-test")
-        self.assertEqual(bucket.replication_target, "crr-target-test")
+        self.assertEqual(bucket.replication_configuration["direction"], "inbound")
+        self.assertEqual(bucket.replication_configuration["source_bucket"], "crr-source-test")
+        self.assertEqual(bucket.replication_destination_bucket, "crr-target-test")
 
     def test_replication_direction_can_be_bidirectional(self):
         bucket = object_storage.get_bucket_policy_report(
@@ -153,8 +153,8 @@ class BucketPolicyServiceTests(SimpleTestCase):
             "OBJRNGPARMARTIG01",
         )
 
-        self.assertEqual(bucket.replication_direction, "bidirectional")
-        self.assertEqual(bucket.replication_peer, "crr-mirror-b-test")
+        self.assertEqual(bucket.replication_configuration["direction"], "bidirectional")
+        self.assertEqual(bucket.replication_configuration["peer_bucket"], "crr-mirror-b-test")
 
     def test_replication_can_be_absent(self):
         bucket = object_storage.get_bucket_policy_report(
@@ -162,8 +162,8 @@ class BucketPolicyServiceTests(SimpleTestCase):
             "OBJRNGPARMARTIG01",
         )
 
-        self.assertEqual(bucket.replication_direction, "none")
-        self.assertIsNone(bucket.replication_target)
+        self.assertIsNone(bucket.replication_configuration)
+        self.assertIsNone(bucket.replication_destination_bucket)
 
     def test_invalid_bucket_name_is_rejected(self):
         with self.assertRaises(ValueError):
@@ -171,6 +171,19 @@ class BucketPolicyServiceTests(SimpleTestCase):
                 "Invalid Bucket Name",
                 "OBJRNGPARMARTIG01",
             )
+
+    def test_bucket_policy_reports_can_return_multiple_matches(self):
+        buckets = object_storage.get_bucket_policy_reports(
+            "crr-source-test",
+            "OBJRNGPARMARTIG01",
+        )
+
+        names = [
+            bucket.name
+            for bucket in buckets
+        ]
+
+        self.assertEqual(names, ["crr-source-test", "crr-target-test"])
 
 
 class BucketPolicyViewTests(TestCase):
@@ -188,6 +201,8 @@ class BucketPolicyViewTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "2</strong>")
+        self.assertContains(response, "bucket(s) trouvé(s)")
         self.assertContains(response, "crr-source-test")
         self.assertContains(response, "crr-target-test")
         self.assertContains(response, "s3:ReplicateObject")
