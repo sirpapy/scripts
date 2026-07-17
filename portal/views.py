@@ -20,7 +20,7 @@ from portal.quota_forms import (
     quota_decision_form_data,
     quota_retrieve_form_data,
 )
-from portal.services import accounts, cinder, object_storage, quotas, wwn
+from portal.services import accounts, cinder, iam_lookup, object_storage, quotas, wwn
 from portal.tool_catalog import TOOL_GROUPS
 from portal.view_helpers import (
     object_storage_rings,
@@ -120,24 +120,30 @@ def account_lookup(request):
 
 @login_required
 def account_details(request):
+    rings = object_storage_rings()
+    ring = selected_object_storage_ring(request.GET.get("ring"), rings)
+    igg = request.GET.get("igg", "").strip()
     account_id = request.GET.get("account_id", "").strip()
-    account = None
-    searched = "account_id" in request.GET
+    access_key = request.GET.get("access_key", "").strip()
+    check_list = None
+    searched = "igg" in request.GET
 
-    if account_id:
-        try:
-            account = accounts.build_account_report(account_id)
-        except ValueError:
-            messages.error(request, "Account ID invalide.")
-    elif searched:
-        messages.error(request, "Saisissez un Account ID.")
+    if searched:
+        if not igg or not account_id or not access_key:
+            messages.error(request, "Saisissez l'IGG, l'Account ID et l'Access Key.")
+        else:
+            check_list = iam_lookup.get_iam_policy_by_user(access_key, igg, account_id, ring)
 
     return render(
         request,
         "portal/account_details.html",
         {
+            "rings": rings,
+            "ring": ring,
+            "igg": igg,
             "account_id": account_id,
-            "account": account,
+            "access_key": access_key,
+            "check_list": check_list,
             "searched": searched,
         },
     )
