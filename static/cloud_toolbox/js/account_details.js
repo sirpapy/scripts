@@ -3,57 +3,136 @@
 
   document.addEventListener("DOMContentLoaded", function () {
     bindExampleButton();
-    bindPolicyToggles();
+    bindDetailToggles();
+    bindGroupToggles();
+    bindConflictLinks();
     bindCopyButtons();
   });
 
-  // Fills the form with a realistic account example.
+  // Fills the form with a deterministic example that produces conflicts.
   function bindExampleButton() {
-    const button = document.querySelector("[data-account-details-example]");
+    const button = document.querySelector("[data-iam-debug-example]");
 
     if (!button) {
       return;
     }
 
     button.addEventListener("click", function () {
-      const accountId = document.getElementById("account_id");
+      setFieldValue("igg", button.getAttribute("data-igg"));
+      setFieldValue("account_id", button.getAttribute("data-account-id"));
+      setFieldValue("access_key", button.getAttribute("data-access-key"));
 
-      if (accountId) {
-        accountId.value = button.getAttribute("data-account-id") || "";
-        accountId.focus();
+      const igg = document.getElementById("igg");
+
+      if (igg) {
+        igg.focus();
       }
     });
   }
 
-  // Wires the policy expand and collapse controls.
-  function bindPolicyToggles() {
-    const cards = Array.from(document.querySelectorAll("[data-policy-card]"));
-    const expandButton = document.querySelector("[data-policies-expand]");
-    const collapseButton = document.querySelector("[data-policies-collapse]");
+  function setFieldValue(id, value) {
+    const field = document.getElementById(id);
+
+    if (field) {
+      field.value = value || "";
+    }
+  }
+
+  // Wires the "Voir les détails" toggles on the check cards.
+  function bindDetailToggles() {
+    document.querySelectorAll("[data-detail-toggle]").forEach(function (toggle) {
+      toggle.addEventListener("click", function () {
+        const body = toggle.parentElement.querySelector("[data-detail-body]");
+        const open = toggle.getAttribute("aria-expanded") === "true";
+
+        toggle.setAttribute("aria-expanded", open ? "false" : "true");
+
+        if (body) {
+          body.hidden = open;
+        }
+      });
+    });
+  }
+
+  // Wires the group expand and collapse controls (tree open by default).
+  function bindGroupToggles() {
+    const cards = Array.from(document.querySelectorAll("[data-group-card]"));
+    const expandButton = document.querySelector("[data-groups-expand]");
+    const collapseButton = document.querySelector("[data-groups-collapse]");
 
     cards.forEach(function (card) {
-      const toggle = card.querySelector("[data-policy-toggle]");
+      const toggle = card.querySelector("[data-group-toggle]");
 
       if (!toggle) {
         return;
       }
 
       toggle.addEventListener("click", function () {
-        setPolicyOpen(card, !policyIsOpen(card));
+        setGroupOpen(card, !groupIsOpen(card));
       });
     });
 
     if (expandButton) {
       expandButton.addEventListener("click", function () {
-        setAllPolicies(cards, true);
+        cards.forEach(function (card) {
+          setGroupOpen(card, true);
+        });
       });
     }
 
     if (collapseButton) {
       collapseButton.addEventListener("click", function () {
-        setAllPolicies(cards, false);
+        cards.forEach(function (card) {
+          setGroupOpen(card, false);
+        });
       });
     }
+  }
+
+  function setGroupOpen(card, open) {
+    const body = card.querySelector("[data-group-body]");
+    const toggle = card.querySelector("[data-group-toggle]");
+
+    if (body) {
+      body.hidden = !open;
+    }
+
+    if (toggle) {
+      toggle.classList.toggle("open", open);
+      toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    }
+  }
+
+  function groupIsOpen(card) {
+    const body = card.querySelector("[data-group-body]");
+
+    return Boolean(body && !body.hidden);
+  }
+
+  // Anchor links from the conflict alert and "annulé par" chips: make sure the
+  // target group is open, then flash the Deny statement.
+  function bindConflictLinks() {
+    document.querySelectorAll("[data-conflict-link]").forEach(function (link) {
+      link.addEventListener("click", function () {
+        const targetId = (link.getAttribute("href") || "").slice(1);
+        const target = document.getElementById(targetId);
+
+        if (!target) {
+          return;
+        }
+
+        const card = target.closest("[data-group-card]");
+
+        if (card) {
+          setGroupOpen(card, true);
+        }
+
+        target.classList.remove("flash");
+        window.requestAnimationFrame(function () {
+          target.classList.add("flash");
+        });
+      });
+    });
   }
 
   // Wires every JSON copy button.
@@ -71,35 +150,6 @@
         });
       });
     });
-  }
-
-  // Opens or closes one policy card.
-  function setPolicyOpen(card, open) {
-    const body = card.querySelector("[data-policy-body]");
-    const toggle = card.querySelector("[data-policy-toggle]");
-
-    if (body) {
-      body.hidden = !open;
-    }
-
-    if (toggle) {
-      toggle.classList.toggle("open", open);
-      toggle.setAttribute("aria-expanded", open ? "true" : "false");
-    }
-  }
-
-  // Opens or closes every policy card.
-  function setAllPolicies(cards, open) {
-    cards.forEach(function (card) {
-      setPolicyOpen(card, open);
-    });
-  }
-
-  // Checks whether one policy card is open.
-  function policyIsOpen(card) {
-    const body = card.querySelector("[data-policy-body]");
-
-    return Boolean(body && !body.hidden);
   }
 
   // Copies text with a small fallback for older browsers.

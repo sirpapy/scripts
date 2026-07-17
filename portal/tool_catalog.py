@@ -59,12 +59,12 @@ COMMON_TOOLS = [
     {
         "id": "account-details",
         "route_name": "account_details",
-        "title": "Détails Account IAM",
+        "title": "Débogage accès IAM",
         "category": "Identité",
-        "icon_name": "Server",
+        "icon_name": "ShieldCheck",
         "description": (
-            "Affichez les détails d'un account et les policies IAM "
-            "qui lui sont appliquées."
+            "Vérifiez l'IGG et l'access key d'un utilisateur, puis inspectez "
+            "ses groupes IAM, policies et conflits de permissions."
         ),
     },
 ]

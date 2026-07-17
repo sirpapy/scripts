@@ -9,6 +9,7 @@ from django.urls import reverse
 from portal.mock_state import mark_deleted, mark_reset, quota_overrides
 from portal.presenters import (
     build_filter_links,
+    iam_diagnostic,
     volume_fields,
     volume_parse_hint,
     volumes_url,
@@ -126,6 +127,7 @@ def account_details(request):
     account_id = request.GET.get("account_id", "").strip()
     access_key = request.GET.get("access_key", "").strip()
     check_list = None
+    diagnostic = None
     searched = "igg" in request.GET
 
     if searched:
@@ -133,6 +135,7 @@ def account_details(request):
             messages.error(request, "Saisissez l'IGG, l'Account ID et l'Access Key.")
         else:
             check_list = iam_lookup.get_iam_policy_by_user(access_key, igg, account_id, ring)
+            diagnostic = iam_diagnostic(check_list)
 
     return render(
         request,
@@ -144,6 +147,7 @@ def account_details(request):
             "account_id": account_id,
             "access_key": access_key,
             "check_list": check_list,
+            "diagnostic": diagnostic,
             "searched": searched,
         },
     )

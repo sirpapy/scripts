@@ -225,20 +225,43 @@ class AccountDetailsServiceTests(SimpleTestCase):
 
 
 class AccountDetailsViewTests(TestCase):
+    EXAMPLE = {
+        "igg": "hbonnet2",
+        "ring": "OBJRNGPARMARTIG01",
+        "account_id": "OBJ_8EBDA5CE_PRD",
+        "access_key": "AKIAFCE24E4C9205B312",
+    }
+
     def setUp(self):
         self.user = User.objects.create_user(username="admin", password="admin")
         self.client.login(username="admin", password="admin")
 
-    def test_account_details_page_renders_report(self):
-        response = self.client.get(
-            reverse("account_details"),
-            {"account_id": "OBJ_8EBDA5CE_PRD"},
-        )
+    def test_iam_debug_page_renders_full_diagnostic(self):
+        response = self.client.get(reverse("account_details"), self.EXAMPLE)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "OBJ_8EBDA5CE_PRD")
-        self.assertContains(response, "Policies IAM appliquées")
-        self.assertContains(response, "s3:ReplicateObject")
+        self.assertContains(response, "Trouvé dans le backend IAM")
+        self.assertContains(response, "Correspond à hbonnet2")
+        self.assertContains(response, "conflit(s) entre groupes")
+        self.assertContains(response, "cancelled-chip")
+        self.assertContains(response, "s3:DeleteObject")
+
+    def test_iam_debug_page_flags_wrong_access_key(self):
+        params = dict(self.EXAMPLE, access_key="AKIAWRONGKEY")
+        response = self.client.get(reverse("account_details"), params)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Ne correspond à aucune clé")
+        self.assertContains(response, "data-group-card")
+
+    def test_iam_debug_page_blocks_unknown_user(self):
+        params = dict(self.EXAMPLE, igg="ghost8")
+        response = self.client.get(reverse("account_details"), params)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Introuvable dans le backend IAM")
+        self.assertContains(response, "Groupes IAM et policies indisponibles")
+        self.assertNotContains(response, "data-group-card")
 
 
 def object_storage_account():

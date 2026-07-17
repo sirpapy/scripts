@@ -1,9 +1,92 @@
+from dataclasses import asdict
+import json
 from urllib.parse import urlencode
 
 from django.urls import reverse
 
-from portal.services import cinder, wwn
+from portal.services import cinder, iam_lookup, wwn
 from portal.view_helpers import input_token_count
+
+
+def iam_diagnostic(check_list):
+    """Annotates the backend check_list into template-ready structures:
+    conflict summary rows with anchors, and the group/policy/statement tree
+    where each Allow cancelled by an explicit Deny links to that Deny."""
+    conflicts = check_list["conflicts"]
+    deny_anchors = {}
+
+    for index, conflict in enumerate(conflicts, start=1):
+        deny_anchors.setdefault(conflict_key(conflict.deny), f"deny-stmt-{index}")
+
+    cancelled_allows = {}
+    for conflict in conflicts:
+        for source in conflict.allowed_by:
+            cancelled_allows.setdefault(conflict_key(source), []).append(conflict)
+
+    tree = [
+        {
+            "group": group,
+            "policies": [
+                {
+                    "policy": policy,
+                    "statements": [
+                        statement_row(group, policy, statement, deny_anchors, cancelled_allows)
+                        for statement in policy.statements
+                    ],
+                }
+                for policy in group.policies
+            ],
+        }
+        for group in check_list["iam_details"]
+    ]
+
+    return {
+        "tree": tree,
+        "conflicts": [
+            {
+                "action": conflict.action,
+                "deny": conflict.deny,
+                "allowed_by": conflict.allowed_by,
+                "anchor": deny_anchors[conflict_key(conflict.deny)],
+            }
+            for conflict in conflicts
+        ],
+        "user_json": entity_json(check_list["user"]),
+        "access_key_json": entity_json(check_list["access_key"]),
+        "iam_details_json": iam_lookup.iam_details_json(check_list["iam_details"]),
+    }
+
+
+def statement_row(group, policy, statement, deny_anchors, cancelled_allows):
+    key = (group.group_name, policy.policy_name or "", statement.sid)
+    is_deny = statement.effect == "Deny"
+    cancelling = [] if is_deny else cancelled_allows.get(key, [])
+
+    return {
+        "statement": statement,
+        "is_deny": is_deny,
+        "anchor": deny_anchors.get(key) if is_deny else None,
+        "cancelled_by": [
+            {
+                "action": conflict.action,
+                "group_name": conflict.deny.group_name,
+                "policy_name": conflict.deny.policy_name,
+                "anchor": deny_anchors[conflict_key(conflict.deny)],
+            }
+            for conflict in cancelling
+        ],
+    }
+
+
+def conflict_key(source):
+    return (source.group_name, source.policy_name, source.sid)
+
+
+def entity_json(entity):
+    if entity is None:
+        return ""
+
+    return json.dumps(asdict(entity), indent=2, default=str)
 
 
 def build_filter_links(volumes):

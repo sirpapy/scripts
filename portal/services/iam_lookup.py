@@ -52,11 +52,13 @@ class PermissionConflict:
 
 
 def get_iam_policy_by_user(access_key: str, igg: str, project_id: str, ring: str) -> dict:
-    randomizer = random.Random(seed_for(igg, project_id, ring))
+    user_randomizer = random.Random(seed_for(igg, project_id, ring, "user"))
+    key_randomizer = random.Random(seed_for(igg, project_id, ring, "key"))
+    groups_randomizer = random.Random(seed_for(igg, project_id, ring, "groups"))
 
-    requested_user = build_user_if_exists(randomizer, igg)
-    requested_key = build_access_key_if_correct(randomizer, igg, access_key)
-    iam_groups = build_groups_for_user(randomizer, igg, project_id) if requested_user else []
+    requested_user = build_user_if_exists(user_randomizer, igg)
+    requested_key = build_access_key_if_correct(key_randomizer, igg, access_key)
+    iam_groups = build_groups_for_user(groups_randomizer, igg, project_id) if requested_user else []
     conflicts = find_permission_conflicts(iam_groups)
 
     return {
