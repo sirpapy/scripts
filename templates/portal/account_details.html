@@ -261,16 +261,16 @@
             </div>
           {% endif %}
 
-          {% if diagnostic.conflicts %}
+          {% if check_list.conflicts %}
             <div class="conflict-alert">
               <span class="vi" data-icon="AlertTriangle" data-icon-size="17"></span>
               <div>
-                <b>{{ diagnostic.conflicts|length }} conflit(s) entre groupes</b> —
+                <b>{{ check_list.conflicts|length }} conflit(s) entre groupes</b> —
                 un Deny explicite l'emporte toujours sur un Allow, même venu d'un autre groupe :
                 <ul>
-                  {% for conflict in diagnostic.conflicts %}
+                  {% for conflict in check_list.conflicts %}
                     <li>
-                      <a href="#{{ conflict.anchor }}" data-conflict-link>
+                      <a href="#deny-{{ conflict.deny.group_name }}-{{ conflict.deny.sid }}" data-conflict-link>
                         <code>{{ conflict.action }}</code>
                       </a>
                       refusé par
@@ -310,14 +310,14 @@
           </div>
 
           <ul class="groups-list">
-            {% for row in diagnostic.tree %}
+            {% for group in check_list.iam_details %}
               <li class="group-node" data-group-card>
                 <div class="group-card">
                   <div class="group-head">
                     <button
                       class="chevron-btn open"
                       type="button"
-                      aria-label="Replier le groupe {{ row.group.group_name }}"
+                      aria-label="Replier le groupe {{ group.group_name }}"
                       aria-expanded="true"
                       data-group-toggle
                     >
@@ -327,34 +327,34 @@
                       <span class="vi" data-icon="ShieldCheck" data-icon-size="15"></span>
                     </span>
                     <div class="group-title">
-                      <strong>{{ row.group.group_name }}</strong>
-                      <span class="mono">{{ row.group.arn }}</span>
+                      <strong>{{ group.group_name }}</strong>
+                      <span class="mono">{{ group.arn }}</span>
                     </div>
                     <span class="group-meta">
-                      {{ row.policies|length }} polic{{ row.policies|length|pluralize:"y,ies" }}
+                      {{ group.policies|length }} polic{{ group.policies|length|pluralize:"y,ies" }}
                     </span>
                   </div>
 
                   <div class="policies-list" data-group-body>
-                    {% for policy_row in row.policies %}
+                    {% for policy in group.policies %}
                       <div class="policy-node">
                         <div class="policy-card">
                           <div class="policy-head">
-                            <strong>{{ policy_row.policy.policy_name }}</strong>
+                            <strong>{{ policy.policy_name }}</strong>
                             <span class="mono">
-                              {{ policy_row.policy.version_id }}
-                              {% if policy_row.policy.is_default_version %}· Default{% endif %}
+                              {{ policy.version_id }}
+                              {% if policy.is_default_version %}· Default{% endif %}
                             </span>
                           </div>
 
                           <div class="statements">
-                            {% for statement_row in policy_row.statements %}
+                            {% for statement in policy.statements %}
                               <div
-                                class="statement {% if statement_row.is_deny %}deny{% else %}allow{% endif %}"
-                                {% if statement_row.anchor %}id="{{ statement_row.anchor }}"{% endif %}
+                                class="statement {% if statement.effect == 'Deny' %}deny{% else %}allow{% endif %}"
+                                {% if statement.effect == 'Deny' %}id="deny-{{ group.group_name }}-{{ statement.sid }}"{% endif %}
                               >
                                 <span class="eff-dot">
-                                  {% if statement_row.is_deny %}
+                                  {% if statement.effect == 'Deny' %}
                                     <span class="vi" data-icon="X" data-icon-size="11"></span>
                                   {% else %}
                                     <span class="vi" data-icon="CheckCircle" data-icon-size="12"></span>
@@ -362,26 +362,30 @@
                                 </span>
                                 <div>
                                   <div class="statement-sid">
-                                    {{ statement_row.statement.sid|default:"Statement" }}
-                                    · {{ statement_row.statement.effect }}
+                                    {{ statement.sid|default:"Statement" }}
+                                    · {{ statement.effect }}
                                   </div>
                                   <div class="statement-line">
                                     <span>Actions</span>
-                                    {% for action in statement_row.statement.actions %}
+                                    {% for action in statement.actions %}
                                       <code>{{ action }}</code>
                                     {% endfor %}
                                   </div>
                                   <div class="statement-line">
                                     <span>Resources</span>
-                                    {% for resource in statement_row.statement.resources %}
+                                    {% for resource in statement.resources %}
                                       <code>{{ resource }}</code>
                                     {% endfor %}
                                   </div>
-                                  {% for cancelled in statement_row.cancelled_by %}
-                                    <a class="cancelled-chip" href="#{{ cancelled.anchor }}" data-conflict-link>
+                                  {% for conflict in statement.cancelled_by %}
+                                    <a
+                                      class="cancelled-chip"
+                                      href="#deny-{{ conflict.deny.group_name }}-{{ conflict.deny.sid }}"
+                                      data-conflict-link
+                                    >
                                       <span class="vi" data-icon="AlertTriangle" data-icon-size="12"></span>
-                                      <code>{{ cancelled.action }}</code> annulé par un Deny dans
-                                      <b>{{ cancelled.group_name }}</b> → {{ cancelled.policy_name }}
+                                      <code>{{ conflict.action }}</code> annulé par un Deny dans
+                                      <b>{{ conflict.deny.group_name }}</b> → {{ conflict.deny.policy_name }}
                                     </a>
                                   {% endfor %}
                                 </div>
@@ -398,9 +402,9 @@
           </ul>
         {% endif %}
 
-        <pre id="iam-user-json" hidden>{{ diagnostic.user_json }}</pre>
-        <pre id="iam-access-key-json" hidden>{{ diagnostic.access_key_json }}</pre>
-        <pre id="iam-details-json" hidden>{{ diagnostic.iam_details_json }}</pre>
+        <pre id="iam-user-json" hidden>{{ user_json }}</pre>
+        <pre id="iam-access-key-json" hidden>{{ access_key_json }}</pre>
+        <pre id="iam-details-json" hidden>{{ iam_details_json }}</pre>
       </div>
     {% endif %}
   </div>

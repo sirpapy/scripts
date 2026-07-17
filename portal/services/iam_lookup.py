@@ -9,9 +9,6 @@ import re
 from portal.services.object_storage import IamPolicyStatement, IamPolicyVersion
 
 
-IGG_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9]{2,15}$")
-
-
 @dataclass
 class IamUser:
     username: str
@@ -37,20 +34,6 @@ class IamGroup:
     policies: list[IamPolicyVersion] = field(default_factory=list)
 
 
-@dataclass(frozen=True)
-class ConflictSource:
-    group_name: str
-    policy_name: str
-    sid: str | None
-
-
-@dataclass
-class PermissionConflict:
-    action: str
-    deny: ConflictSource
-    allowed_by: list[ConflictSource]
-
-
 def get_iam_policy_by_user(access_key: str, igg: str, project_id: str, ring: str) -> dict:
     user_randomizer = random.Random(seed_for(igg, project_id, ring, "user"))
     key_randomizer = random.Random(seed_for(igg, project_id, ring, "key"))
@@ -71,59 +54,48 @@ def get_iam_policy_by_user(access_key: str, igg: str, project_id: str, ring: str
     }
 
 
-def find_permission_conflicts(iam_groups: list[IamGroup]) -> list[PermissionConflict]:
-    deny_statements: list[tuple[str, str, IamPolicyStatement]] = []
-    allow_statements: list[tuple[str, str, IamPolicyStatement]] = []
+def find_permission_conflicts(iam_groups: list[IamGroup]) -> list[dict]:
+    """Regle IAM : un Deny explicite l'emporte sur un Allow, meme si les deux
+    viennent de groupes differents. Retourne un conflit par action refusee
+    qu'un statement Allow accorde par ailleurs."""
+    allows = []
+    denies = []
 
     for group in iam_groups:
         for policy in group.policies:
             for statement in policy.statements:
-                entry = (group.group_name, policy.policy_name or "", statement)
+                source = {
+                    "group_name": group.group_name,
+                    "policy_name": policy.policy_name,
+                    "sid": statement.sid,
+                }
+                for action in statement.actions:
+                    if statement.effect == "Deny":
+                        denies.append((action, source))
+                    else:
+                        allows.append((action, source))
 
-                if statement.effect == "Deny":
-                    deny_statements.append(entry)
-                else:
-                    allow_statements.append(entry)
+    conflicts = []
 
-    conflicts: list[PermissionConflict] = []
+    for deny_action, deny_source in denies:
+        allowed_by = []
 
-    for deny_group, deny_policy, deny_statement in deny_statements:
-        for deny_action in deny_statement.actions:
-            allowed_by = dedupe_sources([
-                ConflictSource(allow_group, allow_policy, allow_statement.sid)
-                for allow_group, allow_policy, allow_statement in allow_statements
-                for allow_action in allow_statement.actions
-                if actions_overlap(deny_action, allow_action)
-            ])
+        for allow_action, allow_source in allows:
+            # fnmatch dans les deux sens pour couvrir les wildcards IAM :
+            # un Allow s3:* couvre un Deny s3:DeleteObject, et inversement.
+            overlap = fnmatch(allow_action, deny_action) or fnmatch(deny_action, allow_action)
 
-            if allowed_by:
-                conflicts.append(
-                    PermissionConflict(
-                        action=deny_action,
-                        deny=ConflictSource(deny_group, deny_policy, deny_statement.sid),
-                        allowed_by=allowed_by,
-                    )
-                )
+            if overlap and allow_source not in allowed_by:
+                allowed_by.append(allow_source)
+
+        if allowed_by:
+            conflicts.append({
+                "action": deny_action,
+                "deny": deny_source,
+                "allowed_by": allowed_by,
+            })
 
     return conflicts
-
-
-def actions_overlap(deny_action: str, allow_action: str) -> bool:
-    return fnmatch(allow_action, deny_action) or fnmatch(deny_action, allow_action)
-
-
-def dedupe_sources(sources: list[ConflictSource]) -> list[ConflictSource]:
-    seen: set[ConflictSource] = set()
-    deduped: list[ConflictSource] = []
-
-    for source in sources:
-        if source in seen:
-            continue
-
-        seen.add(source)
-        deduped.append(source)
-
-    return deduped
 
 
 def build_user_if_exists(randomizer: random.Random, igg: str) -> IamUser | None:
@@ -324,15 +296,6 @@ def replication_policy(project_id: str, bucket_name: str, created_at: datetime) 
     )
 
 
-def normalize_igg(value: str) -> str:
-    igg = value.strip()
-
-    if not IGG_PATTERN.match(igg):
-        raise ValueError("Invalid IGG")
-
-    return igg
-
-
 def bucket_arn(bucket_name: str, suffix: str | None = None) -> str:
     arn = f"arn:aws:s3:::{bucket_name}"
 
@@ -366,22 +329,17 @@ def seed_for(*parts: str) -> int:
     return int(digest[:16], 16)
 
 
-def iam_group_as_dict(group: IamGroup) -> dict[str, object]:
-    return {
-        "GroupName": group.group_name,
-        "Arn": group.arn,
-        "GroupId": group.group_id,
-        "CreateDate": iso_date(group.creation_date),
-        "Policies": [policy.as_dict() for policy in group.policies],
-    }
-
-
 def iam_details_json(iam_groups: list[IamGroup]) -> str:
-    return json.dumps([iam_group_as_dict(group) for group in iam_groups], indent=2)
-
-
-def iso_date(value: datetime | None) -> str | None:
-    if value is None:
-        return None
-
-    return value.isoformat()
+    return json.dumps(
+        [
+            {
+                "GroupName": group.group_name,
+                "Arn": group.arn,
+                "GroupId": group.group_id,
+                "CreateDate": group.creation_date.isoformat() if group.creation_date else None,
+                "Policies": [policy.as_dict() for policy in group.policies],
+            }
+            for group in iam_groups
+        ],
+        indent=2,
+    )

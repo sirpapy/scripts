@@ -8,85 +8,34 @@ from portal.services import cinder, iam_lookup, wwn
 from portal.view_helpers import input_token_count
 
 
-def iam_diagnostic(check_list):
-    """Annotates the backend check_list into template-ready structures:
-    conflict summary rows with anchors, and the group/policy/statement tree
-    where each Allow cancelled by an explicit Deny links to that Deny."""
-    conflicts = check_list["conflicts"]
-    deny_anchors = {}
-
-    for index, conflict in enumerate(conflicts, start=1):
-        deny_anchors.setdefault(conflict_key(conflict.deny), f"deny-stmt-{index}")
-
-    cancelled_allows = {}
-    for conflict in conflicts:
-        for source in conflict.allowed_by:
-            cancelled_allows.setdefault(conflict_key(source), []).append(conflict)
-
-    tree = [
-        {
-            "group": group,
-            "policies": [
-                {
-                    "policy": policy,
-                    "statements": [
-                        statement_row(group, policy, statement, deny_anchors, cancelled_allows)
-                        for statement in policy.statements
-                    ],
+def annotate_cancelled_allows(check_list):
+    """Pose statement.cancelled_by sur chaque Allow annule par un Deny d'un
+    autre groupe, pour que le template affiche la chip "annule par"."""
+    for group in check_list["iam_details"]:
+        for policy in group.policies:
+            for statement in policy.statements:
+                source = {
+                    "group_name": group.group_name,
+                    "policy_name": policy.policy_name,
+                    "sid": statement.sid,
                 }
-                for policy in group.policies
-            ],
-        }
-        for group in check_list["iam_details"]
-    ]
+                statement.cancelled_by = [
+                    conflict
+                    for conflict in check_list["conflicts"]
+                    if source in conflict["allowed_by"]
+                ]
+
+
+def iam_json_exports(check_list):
+    """JSON des boutons Copier de la page de debogage IAM."""
+    user = check_list["user"]
+    access_key = check_list["access_key"]
 
     return {
-        "tree": tree,
-        "conflicts": [
-            {
-                "action": conflict.action,
-                "deny": conflict.deny,
-                "allowed_by": conflict.allowed_by,
-                "anchor": deny_anchors[conflict_key(conflict.deny)],
-            }
-            for conflict in conflicts
-        ],
-        "user_json": entity_json(check_list["user"]),
-        "access_key_json": entity_json(check_list["access_key"]),
+        "user_json": json.dumps(asdict(user), indent=2, default=str) if user else "",
+        "access_key_json": json.dumps(asdict(access_key), indent=2, default=str) if access_key else "",
         "iam_details_json": iam_lookup.iam_details_json(check_list["iam_details"]),
     }
-
-
-def statement_row(group, policy, statement, deny_anchors, cancelled_allows):
-    key = (group.group_name, policy.policy_name or "", statement.sid)
-    is_deny = statement.effect == "Deny"
-    cancelling = [] if is_deny else cancelled_allows.get(key, [])
-
-    return {
-        "statement": statement,
-        "is_deny": is_deny,
-        "anchor": deny_anchors.get(key) if is_deny else None,
-        "cancelled_by": [
-            {
-                "action": conflict.action,
-                "group_name": conflict.deny.group_name,
-                "policy_name": conflict.deny.policy_name,
-                "anchor": deny_anchors[conflict_key(conflict.deny)],
-            }
-            for conflict in cancelling
-        ],
-    }
-
-
-def conflict_key(source):
-    return (source.group_name, source.policy_name, source.sid)
-
-
-def entity_json(entity):
-    if entity is None:
-        return ""
-
-    return json.dumps(asdict(entity), indent=2, default=str)
 
 
 def build_filter_links(volumes):

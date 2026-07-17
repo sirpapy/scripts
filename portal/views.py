@@ -8,8 +8,9 @@ from django.urls import reverse
 
 from portal.mock_state import mark_deleted, mark_reset, quota_overrides
 from portal.presenters import (
+    annotate_cancelled_allows,
     build_filter_links,
-    iam_diagnostic,
+    iam_json_exports,
     volume_fields,
     volume_parse_hint,
     volumes_url,
@@ -127,7 +128,6 @@ def account_details(request):
     account_id = request.GET.get("account_id", "").strip()
     access_key = request.GET.get("access_key", "").strip()
     check_list = None
-    diagnostic = None
     searched = "igg" in request.GET
 
     if searched:
@@ -135,22 +135,22 @@ def account_details(request):
             messages.error(request, "Saisissez l'IGG, l'Account ID et l'Access Key.")
         else:
             check_list = iam_lookup.get_iam_policy_by_user(access_key, igg, account_id, ring)
-            diagnostic = iam_diagnostic(check_list)
+            annotate_cancelled_allows(check_list)
 
-    return render(
-        request,
-        "portal/account_details.html",
-        {
-            "rings": rings,
-            "ring": ring,
-            "igg": igg,
-            "account_id": account_id,
-            "access_key": access_key,
-            "check_list": check_list,
-            "diagnostic": diagnostic,
-            "searched": searched,
-        },
-    )
+    context = {
+        "rings": rings,
+        "ring": ring,
+        "igg": igg,
+        "account_id": account_id,
+        "access_key": access_key,
+        "check_list": check_list,
+        "searched": searched,
+    }
+
+    if check_list:
+        context.update(iam_json_exports(check_list))
+
+    return render(request, "portal/account_details.html", context)
 
 
 @login_required
