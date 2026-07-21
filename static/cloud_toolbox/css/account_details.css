@@ -437,6 +437,12 @@
   animation: row-expand 0.18s var(--ease) both;
 }
 
+/* [hidden] et display:flex ont la même spécificité ; sans cette règle,
+   display:flex l'emporte et le JS ne peut plus visuellement replier le groupe. */
+.policies-list[hidden] {
+  display: none;
+}
+
 .policy-node {
   position: relative;
   padding-left: 22px;
