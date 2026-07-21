@@ -42,7 +42,12 @@
   function bindDetailToggles() {
     document.querySelectorAll("[data-detail-toggle]").forEach(function (toggle) {
       toggle.addEventListener("click", function () {
-        const body = toggle.parentElement.querySelector("[data-detail-body]");
+        // aria-controls pointe l'id exact de la section à ouvrir, pour ne
+        // jamais dépendre de la position du bouton dans le HTML.
+        const targetId = toggle.getAttribute("aria-controls");
+        const body = targetId
+          ? document.getElementById(targetId)
+          : toggle.parentElement.querySelector("[data-detail-body]");
         const open = toggle.getAttribute("aria-expanded") === "true";
 
         toggle.setAttribute("aria-expanded", open ? "false" : "true");

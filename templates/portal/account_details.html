@@ -141,11 +141,11 @@
             </div>
 
             {% if check_list.user %}
-              <button class="check-detail-toggle" type="button" data-detail-toggle aria-expanded="false">
+              <button class="check-detail-toggle" type="button" data-detail-toggle aria-expanded="false" aria-controls="user-detail-body">
                 Voir les détails
                 <span class="vi" data-icon="ChevronDown" data-icon-size="14"></span>
               </button>
-              <div class="check-detail-body" data-detail-body hidden>
+              <div id="user-detail-body" class="check-detail-body" data-detail-body hidden>
                 <dl class="kv-grid">
                   <div>
                     <dt>User ID</dt>
@@ -192,11 +192,11 @@
             </div>
 
             {% if check_list.access_key %}
-              <button class="check-detail-toggle" type="button" data-detail-toggle aria-expanded="false">
+              <button class="check-detail-toggle" type="button" data-detail-toggle aria-expanded="false" aria-controls="access-key-detail-body">
                 Voir les détails
                 <span class="vi" data-icon="ChevronDown" data-icon-size="14"></span>
               </button>
-              <div class="check-detail-body" data-detail-body hidden>
+              <div id="access-key-detail-body" class="check-detail-body" data-detail-body hidden>
                 <dl class="kv-grid">
                   <div>
                     <dt>Statut</dt>
@@ -220,11 +220,11 @@
                 </button>
               </div>
             {% elif check_list.is_user %}
-              <button class="check-detail-toggle" type="button" data-detail-toggle aria-expanded="false">
+              <button class="check-detail-toggle" type="button" data-detail-toggle aria-expanded="false" aria-controls="access-key-detail-body">
                 Voir les détails
                 <span class="vi" data-icon="ChevronDown" data-icon-size="14"></span>
               </button>
-              <div class="check-detail-body" data-detail-body hidden>
+              <div id="access-key-detail-body" class="check-detail-body" data-detail-body hidden>
                 <p class="check-detail-note">
                   Aucune Access Key de <b>{{ igg }}</b> ne correspond à la valeur saisie.
                   Vérifiez qu'il n'y a pas de faute de frappe, ou que la clé n'a pas été
