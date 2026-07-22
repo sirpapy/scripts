@@ -74,36 +74,9 @@
     {% endfor %}
   </div>
 
-  <div
-    id="account-modal"
-    class="modal-backdrop"
-    data-modal
-    hidden
-  >
-    <section
-      class="modal"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="account-modal-title"
-    >
-      <div class="modal-head">
-        <div>
-          <div class="modal-kicker">Account API</div>
-          <h3 id="account-modal-title">Account details</h3>
-        </div>
-        <button
-          class="icon-btn"
-          type="button"
-          data-modal-close
-          aria-label="Fermer"
-        >
-          <span class="vi" data-icon="X" data-icon-size="16"></span>
-        </button>
-      </div>
-
-      <div class="modal-body" data-account-modal-body></div>
-    </section>
-  </div>
+  {% modal "account-modal" title="Account details" kicker="Account API" %}
+    <div data-account-modal-body></div>
+  {% endmodal %}
 
   <script src="{% static 'cloud_toolbox/js/icons.js' %}?v=7"></script>
   <script src="{% static 'cloud_toolbox/js/common.js' %}?v=1"></script>

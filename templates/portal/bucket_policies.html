@@ -1,5 +1,6 @@
 {% extends "portal/base.html" %}
 {% load static %}
+{% load ui %}
 
 {% block title %}Bucket IAM Policies — Cloud Toolbox{% endblock %}
 
@@ -105,7 +106,7 @@
 
       <div class="bucket-result-list" data-bucket-list>
       {% for bucket, bucket_raw_json, bucket_policies_json in bucket_candidate_rows %}
-      {% with bucket_index=forloop.counter %}
+      {% with bucket_index=forloop.counter|stringformat:"s" %}
       <section class="bucket-panel scale-in">
         <header class="bucket-panel-head">
           <div class="bucket-title">
@@ -426,38 +427,13 @@
         </div>
       </section>
 
-      <div
-        id="bucket-policy-modal-{{ bucket_index }}"
-        class="modal-backdrop bucket-policy-modal-backdrop"
-        data-modal
-        hidden
-      >
-        <section
-          class="modal bucket-policy-modal"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="policy-modal-title-{{ bucket_index }}"
-        >
-          <div class="modal-head">
-            <div>
-              <div class="modal-kicker">Account IAM</div>
-              <h3 id="policy-modal-title-{{ bucket_index }}">{{ bucket.owner }}</h3>
-              <p class="policy-modal-subtitle">
-                Policies IAM de l'account qui touchent
-                <span class="mono">{{ bucket.name }}</span>.
-              </p>
-            </div>
-            <button
-              class="icon-btn"
-              type="button"
-              data-modal-close
-              aria-label="Fermer"
-            >
-              <span class="vi" data-icon="X" data-icon-size="16"></span>
-            </button>
-          </div>
+      {% modal "bucket-policy-modal-"|add:bucket_index title=bucket.owner kicker="Account IAM" modal_class="bucket-policy-modal" body_class="bucket-policy-modal-body" %}
+        <div data-policy-scope>
+            <p class="policy-modal-subtitle">
+              Policies IAM de l'account qui touchent
+              <span class="mono">{{ bucket.name }}</span>.
+            </p>
 
-          <div class="modal-body bucket-policy-modal-body" data-policy-scope>
             <div class="account-context">
               <div>
                 <span>Bucket</span>
@@ -578,9 +554,8 @@
             </div>
 
             <pre id="all-policies-json-{{ bucket_index }}" hidden>{{ bucket_policies_json }}</pre>
-          </div>
-        </section>
-      </div>
+        </div>
+      {% endmodal %}
       {% endwith %}
       {% endfor %}
       </div>
