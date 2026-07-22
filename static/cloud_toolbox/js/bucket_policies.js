@@ -4,7 +4,6 @@
   document.addEventListener("DOMContentLoaded", function () {
     bindExampleButton();
     bindBucketToggles();
-    bindPolicyModal();
     bindPolicyToggles();
     bindCopyButtons();
   });
@@ -61,69 +60,6 @@
         setAllBuckets(buttons, false);
       });
     }
-  }
-
-  // Opens the account IAM policy modal from owner controls.
-  function bindPolicyModal() {
-    const modals = Array.from(document.querySelectorAll("[data-policy-modal]"));
-
-    if (!modals.length) {
-      return;
-    }
-
-    document.querySelectorAll("[data-policy-modal-open]").forEach(function (button) {
-      button.addEventListener("click", function () {
-        const modal = document.getElementById(button.getAttribute("data-policy-modal-open"));
-
-        if (!modal) {
-          return;
-        }
-
-        openPolicyModal(modal);
-      });
-    });
-
-    modals.forEach(function (modal) {
-      modal.querySelectorAll("[data-policy-modal-close]").forEach(function (button) {
-        button.addEventListener("click", function () {
-          closePolicyModal(modal);
-        });
-      });
-
-      modal.addEventListener("click", function (event) {
-        if (event.target === modal) {
-          closePolicyModal(modal);
-        }
-      });
-    });
-
-    document.addEventListener("keydown", function (event) {
-      const modal = modals.find(function (currentModal) {
-        return !currentModal.hidden;
-      });
-
-      if (event.key === "Escape" && modal) {
-        closePolicyModal(modal);
-      }
-    });
-  }
-
-  // Shows the account IAM policy modal.
-  function openPolicyModal(modal) {
-    modal.hidden = false;
-    document.body.classList.add("modal-open");
-
-    const closeButton = modal.querySelector("[data-policy-modal-close]");
-
-    if (closeButton) {
-      closeButton.focus();
-    }
-  }
-
-  // Hides the account IAM policy modal.
-  function closePolicyModal(modal) {
-    modal.hidden = true;
-    document.body.classList.remove("modal-open");
   }
 
   // Wires the policy expand and collapse controls.

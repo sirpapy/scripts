@@ -172,7 +172,7 @@
                 <button
                   class="owner-button mono"
                   type="button"
-                  data-policy-modal-open="bucket-policy-modal-{{ bucket_index }}"
+                  data-modal-open="bucket-policy-modal-{{ bucket_index }}"
                 >
                   {{ bucket.owner }}
                 </button>
@@ -416,7 +416,7 @@
           <button
             class="btn btn-indigo btn-sm"
             type="button"
-            data-policy-modal-open="bucket-policy-modal-{{ bucket_index }}"
+            data-modal-open="bucket-policy-modal-{{ bucket_index }}"
           >
             Voir les policies de l'owner
           </button>
@@ -429,7 +429,7 @@
       <div
         id="bucket-policy-modal-{{ bucket_index }}"
         class="modal-backdrop bucket-policy-modal-backdrop"
-        data-policy-modal
+        data-modal
         hidden
       >
         <section
@@ -450,7 +450,7 @@
             <button
               class="icon-btn"
               type="button"
-              data-policy-modal-close
+              data-modal-close
               aria-label="Fermer"
             >
               <span class="vi" data-icon="X" data-icon-size="16"></span>

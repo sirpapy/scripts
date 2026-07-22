@@ -8,7 +8,6 @@
   document.addEventListener("DOMContentLoaded", function () {
     bindAccountButtons();
     bindAccountExampleButton();
-    bindAccountModal();
   });
 
   // Opens the account modal from account ID buttons.
@@ -43,8 +42,8 @@
       return;
     }
 
-    openAccountModal();
-    modalBody.innerHTML = '<div class="loading-inline">Chargement du compte...</div>';
+    CT.openModal("account-modal");
+    modalBody.innerHTML = CT.loadingHtml("Chargement du compte...");
 
     fetch("/api/accounts/" + encodeURIComponent(projectId) + "/")
       .then(function (response) {
@@ -66,56 +65,6 @@
         );
         CT.renderIcons();
       });
-  }
-
-  // Wires close actions for the account modal.
-  function bindAccountModal() {
-    const modal = document.querySelector("[data-account-modal]");
-
-    if (!modal) {
-      return;
-    }
-
-    modal.querySelectorAll("[data-modal-close]").forEach(function (button) {
-      button.addEventListener("click", closeAccountModal);
-    });
-
-    modal.addEventListener("click", function (event) {
-      if (event.target === modal) {
-        closeAccountModal();
-      }
-    });
-
-    document.addEventListener("keydown", function (event) {
-      if (event.key === "Escape" && !modal.hidden) {
-        closeAccountModal();
-      }
-    });
-  }
-
-  // Shows the account modal.
-  function openAccountModal() {
-    const modal = document.querySelector("[data-account-modal]");
-
-    if (!modal) {
-      return;
-    }
-
-    modal.hidden = false;
-    document.body.classList.add("modal-open");
-    CT.renderIcons();
-  }
-
-  // Hides the account modal.
-  function closeAccountModal() {
-    const modal = document.querySelector("[data-account-modal]");
-
-    if (!modal) {
-      return;
-    }
-
-    modal.hidden = true;
-    document.body.classList.remove("modal-open");
   }
 
   // Builds the account details markup.
