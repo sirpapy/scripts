@@ -111,6 +111,11 @@
     });
 
     document.querySelectorAll("[data-modal]").forEach(function (modal) {
+      // A modal can be declared anywhere in the template, but position:fixed
+      // only covers the viewport if no ancestor has a transform/filter/etc
+      // (e.g. an animated card). Moving it to <body> sidesteps that entirely.
+      document.body.appendChild(modal);
+
       modal.querySelectorAll("[data-modal-close]").forEach(function (button) {
         button.addEventListener("click", function () {
           closeModal(modal.id);
