@@ -15,6 +15,7 @@
     bindAutoResizeTextareas();
     bindExampleButtons();
     bindConfirmForms();
+    bindSubmitLoading();
     bindToastLifetime();
     bindModals();
   });
@@ -77,6 +78,22 @@
         if (!window.confirm(submitter.getAttribute("data-confirm"))) {
           event.preventDefault();
         }
+      });
+    });
+  }
+
+  // Shows a spinner on the submit button of a plain (non-fetch) form submit.
+  // The page is about to be replaced by Django's response, so there is
+  // nothing to turn back off - only useful when the submit wasn't cancelled
+  // (e.g. by a rejected data-confirm) and doesn't already have its own state.
+  function bindSubmitLoading() {
+    document.querySelectorAll("form:not([data-bulk-form])").forEach(function (form) {
+      form.addEventListener("submit", function (event) {
+        if (event.defaultPrevented || !event.submitter) {
+          return;
+        }
+
+        setButtonLoading(event.submitter, true);
       });
     });
   }
