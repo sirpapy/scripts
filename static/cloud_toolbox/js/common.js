@@ -200,10 +200,9 @@
 
       button.disabled = true;
       button.innerHTML = (
-        '<span class="spinner" data-icon="Loader" data-icon-size="16"></span> ' +
+        '<span class="spinner"></span> ' +
         escapeHtml(button.getAttribute("data-loading-label") || "Chargement…")
       );
-      renderIcons();
       return;
     }
 
@@ -220,7 +219,7 @@
   function loadingHtml(label) {
     return (
       '<div class="loading-inline">' +
-      '<span class="spinner" data-icon="Loader" data-icon-size="14"></span> ' +
+      '<span class="spinner"></span> ' +
       escapeHtml(label || "Chargement…") +
       "</div>"
     );
